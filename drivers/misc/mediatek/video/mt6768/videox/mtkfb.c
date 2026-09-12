@@ -50,6 +50,7 @@
 #include "ddp_hal.h"
 #include "disp_drv_log.h"
 #include "disp_lcm.h"
+#include "ddp_pwm.h"
 #include "mtkfb.h"
 #include "mtkfb_console.h"
 #include "mtkfb_fence.h"
@@ -386,9 +387,15 @@ static ssize_t mtkfb_set_hbm(struct device *dev, struct device_attribute *attr, 
 {
 	extern char *saved_command_line;
 	int bkl_id = 0;
-	char *bkl_ptr = (char *)strnstr(saved_command_line, ":bklic=", strlen(saved_command_line));
-	bkl_ptr += strlen(":bklic=");
-	bkl_id = simple_strtol(bkl_ptr, NULL, 10);
+	char *bkl_ptr = NULL;
+
+	if (saved_command_line) {
+		bkl_ptr = (char *)strnstr(saved_command_line, ":bklic=", strlen(saved_command_line));
+		if (bkl_ptr) {
+			bkl_ptr += strlen(":bklic=");
+			bkl_id = simple_strtol(bkl_ptr, NULL, 10);
+		}
+	}
 
 	sscanf(buf, "%d", &hbm_mode);
 
@@ -878,6 +885,7 @@ static int mtkfb_pan_display_impl(struct fb_var_screeninfo *var,
 	int ret = 0;
 	/* int wait_ret = 0; */
 	/* unsigned int layerpitch = 0; */
+	struct mtkfb_device *fbdev = (struct mtkfb_device *)info->par;
 	unsigned int src_pitch = 0;
 	struct disp_session_input_config *session_input;
 	struct disp_input_config *input;
@@ -896,6 +904,8 @@ static int mtkfb_pan_display_impl(struct fb_var_screeninfo *var,
 
 	info->var.yoffset = var->yoffset;
 	offset = var->yoffset * info->fix.line_length;
+	if (fb_pa == 0)
+		fb_pa = (unsigned long)fbdev->fb_pa_base;
 	paStart = fb_pa + offset;
 	vaStart = info->screen_base + offset;
 	vaEnd = vaStart + info->var.yres * info->fix.line_length;
@@ -1167,7 +1177,6 @@ static int mtkfb_set_par(struct fb_info *fbi)
 	struct disp_session_input_config *session_input;
 	struct disp_input_config *input;
 
-
 	/* DISPFUNC(); */
 	memset(&fb_layer, 0, sizeof(struct fb_overlay_layer));
 	switch (bpp) {
@@ -1205,6 +1214,8 @@ static int mtkfb_set_par(struct fb_info *fbi)
 	fb_layer.src_base_addr =
 	    (void *)((unsigned long)fbdev->fb_va_base + var->yoffset *
 	    fbi->fix.line_length);
+	if (fb_pa == 0)
+		fb_pa = (unsigned long)fbdev->fb_pa_base;
 	DISPDBG(
 		"fb_pa=0x%08lx, var->yoffset=0x%08x,fbi->fix.line_length=0x%08x\n",
 		fb_pa, var->yoffset, fbi->fix.line_length);
@@ -1227,19 +1238,6 @@ static int mtkfb_set_par(struct fb_info *fbi)
 		goto out;
 
 	session_input->config_layer_num = 0;
-
-	if (!is_DAL_Enabled()) {
-		int layer_num;
-
-		DISPCHECK("AEE is not enabled, will disable layer 3\n");
-		layer_num = session_input->config_layer_num;
-		input =	&session_input->config[layer_num];
-		session_input->config_layer_num++;
-		input->layer_id = primary_display_get_option("ASSERT_LAYER");
-		input->layer_enable = 0;
-	} else {
-		DISPCHECK("AEE is enabled, should not disable layer 3\n");
-	}
 
 	input = &session_input->config[session_input->config_layer_num++];
 	_convert_fb_layer_to_disp_input(&fb_layer, input);
@@ -1863,7 +1861,7 @@ static int mtkfb_ioctl(struct fb_info *info, unsigned int cmd,
 		struct disp_input_config *input;
 
 		DISPMSG("MTKFB_META_SHOW_BOOTLOGO\n");
-		memset((void *)&session_input, 0, sizeof(session_input));
+         	memset((void *)&session_input, 0, sizeof(session_input));
 
 		for (i = 0; i < 2; i++) {
 
@@ -2370,14 +2368,14 @@ static void mtkfb_fbinfo_cleanup(struct mtkfb_device *fbdev)
 /* Init frame buffer content as 3 R/G/B color bars for debug */
 static int init_framebuffer(struct fb_info *info)
 {
-	void *buffer;
-	int size;
-	struct fb_var_screeninfo *var = &info->var;
+       void *buffer;
+       int size;
+       struct fb_var_screeninfo *var = &info->var;
 
-	buffer = info->screen_base + var->yoffset * info->fix.line_length;
-	size = var->xres_virtual * var->yres * var->bits_per_pixel / 8;
+       buffer = info->screen_base + var->yoffset * info->fix.line_length;
+       size = var->xres_virtual * var->yres * var->bits_per_pixel / 8;
 
-	memset_io(buffer, 0, size);
+       memset_io(buffer, 0, size);
 	return 0;
 }
 
@@ -2537,12 +2535,12 @@ static int __parse_tag_videolfb_extra(struct device_node *node)
 		return -1;
 	islcmconnected = of_read_number(prop, 1);
 
-	prop = (void *)of_get_property(node,
-		"atag,videolfb-islcm_inited", NULL);
-	if (!prop)
-		is_lcm_inited = 1;
-	else
-		is_lcm_inited = of_read_number(prop, 1);
+        prop = (void *)of_get_property(node,
+                "atag,videolfb-islcm_inited", NULL);
+        if (!prop)
+                is_lcm_inited = 1;
+        else
+                is_lcm_inited = of_read_number(prop, 1);
 
 	prop = (void *)of_get_property(node,
 		"atag,videolfb-fps", NULL);
@@ -2597,10 +2595,16 @@ static int __parse_tag_videolfb(struct device_node *node)
 		if (lcd_fps == 0)
 			lcd_fps = 6000;
 
+		lcd_fps = 6000;
 		islcmconnected = videolfb_tag->islcmfound;
 		vramsize = videolfb_tag->vram;
 		fb_base = videolfb_tag->fb_base;
 		is_lcm_inited = 1;
+
+		if (vramsize < 0x23D0000) {
+			DISPMSG("Override broken LK vramsize %d -> %d\n", vramsize, 0x23D0000);
+			vramsize = 0x23D0000;
+		}
 
 		return 0;
 	}
@@ -2890,35 +2894,11 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	DISPMSG("%s: fb_pa = %pa\n", __func__, &fb_base);
 
-#ifdef CONFIG_MTK_IOMMU_V2
-	temp_va = (size_t)ioremap_wc(fb_base,
-		(fb_base + vramsize - fb_base));
-	fbdev->fb_va_base = (void *)temp_va;
-	ion_display_client = disp_ion_create("disp_fb0");
-	if (ion_display_client == NULL) {
-		DISPERR("%s: fail to create ion\n", __func__);
-		r = -1;
-		goto cleanup;
-	}
-
-	ion_display_handle = disp_ion_alloc(ion_display_client,
-		ION_HEAP_MULTIMEDIA_PA2MVA_MASK, fb_base,
-		(fb_base + vramsize - fb_base));
-	if (r != 0) {
-		DISPERR("%s: fail to allocate buffer\n", __func__);
-		r = -1;
-		goto cleanup;
-	}
-
-	disp_ion_get_mva(ion_display_client,
-		ion_display_handle,
-		&fb_pa, 0,
-		DISP_M4U_PORT_DISP_OVL0);
-#else
 	disp_hal_allocate_framebuffer(fb_base, (fb_base + vramsize - 1),
 		(unsigned long *)(&fbdev->fb_va_base), &fb_pa);
-#endif
 	fbdev->fb_pa_base = fb_base;
+	if (fb_pa == 0)
+		fb_pa = (unsigned long)fb_base;
 
 	primary_display_set_frame_buffer_address(
 		(unsigned long)(fbdev->fb_va_base), fb_pa, fb_base);

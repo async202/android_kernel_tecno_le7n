@@ -310,15 +310,7 @@ static void set_dummy(void)
 
 static kal_uint32 return_sensor_id(void)
 {
-
-	int tmp_id = 0x0;
-	tmp_id = ((read_cmos_sensor(0xf0) << 8) | read_cmos_sensor(0xf1));
-	pr_err("wangmin sensor_id read is %x!", tmp_id);
-	if (tmp_id == 0x2e0) {
-		LOG_INF("ERROR, sensor id 02E0\n");
-		tmp_id = imgsensor_info.sensor_id;
-	}
-	return tmp_id;
+	return ((read_cmos_sensor(0xf0) << 8) | read_cmos_sensor(0xf1));
 }
 
 static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
@@ -876,7 +868,7 @@ gc02m1_read_otp_info(struct i2c_client *client,
 	return size;
 }
 
-static void gc02m1_read_otp(void)
+static void __maybe_unused gc02m1_read_otp(void)
 {
 	int i = 0;
 	int otp_addr[] = { 16, 18, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
@@ -914,7 +906,7 @@ static void gc02m1_read_otp(void)
 	write_cmos_sensor(0xfe, 0x00);
 }
 
-static int get_gc02m1_vendor_id(void)
+static int __maybe_unused get_gc02m1_vendor_id(void)
 {
 	int module_id;
 	write_cmos_sensor(0xfe, 0x00);
@@ -959,7 +951,7 @@ static int get_gc02m1_vendor_id(void)
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
 	kal_uint8 i = 0;
-	kal_uint8 retry = 2, vendor_id = 0;
+	kal_uint8 retry = 2;
 
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
@@ -971,15 +963,9 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 				   *sensor_id);
 
 			if (*sensor_id == imgsensor_info.sensor_id) {
-				vendor_id = get_gc02m1_vendor_id();
-				if (vendor_id == 0x07) {
-					LOG_INF
-					("i2c write id:0x%x, sensor id:0x%x\n",
-					 imgsensor.i2c_write_id,
-					 *sensor_id);
-					gc02m1_read_otp();
-					return ERROR_NONE;
-				}
+				LOG_INF("i2c write id:0x%x, sensor id:0x%x\n",
+					imgsensor.i2c_write_id, *sensor_id);
+				return ERROR_NONE;
 			}
 			LOG_INF
 			("Read sensor id fail, write id: 0x%x, id: 0x%x\n",

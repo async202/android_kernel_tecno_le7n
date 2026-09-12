@@ -369,17 +369,33 @@ HOSTCXXFLAGS := -O2 $(HOST_LFS_CFLAGS)
 HOSTLDFLAGS  := $(HOST_LFS_LDFLAGS)
 HOST_LOADLIBES := $(HOST_LFS_LIBS)
 
-# Make variables (CC, etc...)
-AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld
-LDGOLD		= $(CROSS_COMPILE)ld.gold
-CC		= $(CROSS_COMPILE)gcc
-CPP		= $(CC) -E
-AR		= $(CROSS_COMPILE)ar
-NM		= $(CROSS_COMPILE)nm
-STRIP		= $(CROSS_COMPILE)strip
-OBJCOPY		= $(CROSS_COMPILE)objcopy
-OBJDUMP		= $(CROSS_COMPILE)objdump
+ifeq ($(LLVM),1)
+CLANG_TRIPLE  := aarch64-linux-gnu-
+CROSS_COMPILE ?= aarch64-linux-android-
+LLVM_TARGET   := --target=aarch64-linux-gnu
+CC            := clang $(LLVM_TARGET)
+CPP           := $(CC) -E
+AS            := clang $(LLVM_TARGET)
+LD            := ld.lld
+AR            := llvm-ar
+NM            := llvm-nm
+STRIP         := llvm-strip
+OBJCOPY       := llvm-objcopy
+OBJDUMP       := llvm-objdump
+OBJSIZE       := llvm-size
+READELF       := llvm-readelf
+else
+AS            = $(CROSS_COMPILE)as
+LD            = $(CROSS_COMPILE)ld
+LDGOLD        = $(CROSS_COMPILE)ld.gold
+CC            = $(CROSS_COMPILE)gcc
+CPP           = $(CC) -E
+AR            = $(CROSS_COMPILE)ar
+NM            = $(CROSS_COMPILE)nm
+STRIP         = $(CROSS_COMPILE)strip
+OBJCOPY       = $(CROSS_COMPILE)objcopy
+OBJDUMP       = $(CROSS_COMPILE)objdump
+endif
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel
@@ -430,6 +446,7 @@ KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 GCC_PLUGINS_CFLAGS :=
 CLANG_FLAGS :=
+KBUILD_CFLAGS += -Wno-error -Wno-format -Wno-attributes -Wno-ignored-optimization-argument
 
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP HOSTLDFLAGS HOST_LOADLIBES
@@ -490,11 +507,15 @@ endif
 GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
 CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)
 GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
+else
+CLANG_FLAGS	+= --target=aarch64-linux-gnu
 endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
+ifneq ($(LLVM_IAS),1)
 CLANG_FLAGS	+= -no-integrated-as
+endif
 CLANG_FLAGS	+= -Werror=unknown-warning-option
 KBUILD_CFLAGS	+= $(CLANG_FLAGS)
 KBUILD_AFLAGS	+= $(CLANG_FLAGS)

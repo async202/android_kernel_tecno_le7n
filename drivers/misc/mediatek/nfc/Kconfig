@@ -1,6 +1,6 @@
 config NFC_CHIP_SUPPORT
 	tristate "NFC driver solution - NFC Controller Driver"
-	depends on I2C && MTK_NFC_CLKBUF_ENABLE
+	depends on I2C
 	select NFC_ST54_SPI
 	help
 	  STMicroelectronics ST21NFC Near Field Communication controller

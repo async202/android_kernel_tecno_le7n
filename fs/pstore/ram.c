@@ -440,12 +440,9 @@ static int notrace ramoops_pstore_write(struct pstore_record *record)
 		return -EINVAL;
 
 	/*
-	 * Out of the various dmesg dump types, ramoops is currently designed
-	 * to only store crash logs, rather than storing general kernel logs.
+	 * Allow all dmesg dump types (reboot, panic, oops, emergency) so that
+	 * any system restart automatically saves full logs to persistent RAM.
 	 */
-	if (record->reason != KMSG_DUMP_OOPS &&
-	    record->reason != KMSG_DUMP_PANIC)
-		return -EINVAL;
 
 	/* Skip Oopes when configured to do so. */
 	if (record->reason == KMSG_DUMP_OOPS && !cxt->dump_oops)

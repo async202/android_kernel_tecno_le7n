@@ -37,11 +37,22 @@ static const struct of_device_id gof_device_id_2[] = {
 	{ .compatible = IMGSENSOR_I2C_OF_DRV_NAME_2, },
 	{}
 };
+static const struct of_device_id gof_device_id_3[] = {
+	{ .compatible = IMGSENSOR_I2C_OF_DRV_NAME_3, },
+	{}
+};
+static const struct of_device_id gof_device_id_4[] = {
+	{ .compatible = IMGSENSOR_I2C_OF_DRV_NAME_4, },
+	{}
+};
 #endif
 
 static int
 imgsensor_i2c_probe_0(struct i2c_client *client, const struct i2c_device_id *id)
 {
+	pr_info("imgsensor_i2c_probe_0: client=%p, adapter=%s (id=%d)\n",
+		client, client ? client->adapter->name : "null",
+		client ? client->adapter->nr : -1);
 	gi2c.inst[IMGSENSOR_I2C_DEV_0].pi2c_client = client;
 	return 0;
 }
@@ -49,6 +60,9 @@ imgsensor_i2c_probe_0(struct i2c_client *client, const struct i2c_device_id *id)
 static int
 imgsensor_i2c_probe_1(struct i2c_client *client, const struct i2c_device_id *id)
 {
+	pr_info("imgsensor_i2c_probe_1: client=%p, adapter=%s (id=%d)\n",
+		client, client ? client->adapter->name : "null",
+		client ? client->adapter->nr : -1);
 	gi2c.inst[IMGSENSOR_I2C_DEV_1].pi2c_client = client;
 	return 0;
 }
@@ -56,7 +70,30 @@ imgsensor_i2c_probe_1(struct i2c_client *client, const struct i2c_device_id *id)
 static int
 imgsensor_i2c_probe_2(struct i2c_client *client, const struct i2c_device_id *id)
 {
+	pr_info("imgsensor_i2c_probe_2: client=%p, adapter=%s (id=%d)\n",
+		client, client ? client->adapter->name : "null",
+		client ? client->adapter->nr : -1);
 	gi2c.inst[IMGSENSOR_I2C_DEV_2].pi2c_client = client;
+	return 0;
+}
+
+static int
+imgsensor_i2c_probe_3(struct i2c_client *client, const struct i2c_device_id *id)
+{
+	pr_info("imgsensor_i2c_probe_3: client=%p, adapter=%s (id=%d)\n",
+		client, client ? client->adapter->name : "null",
+		client ? client->adapter->nr : -1);
+	gi2c.inst[IMGSENSOR_I2C_DEV_3].pi2c_client = client;
+	return 0;
+}
+
+static int
+imgsensor_i2c_probe_4(struct i2c_client *client, const struct i2c_device_id *id)
+{
+	pr_info("imgsensor_i2c_probe_4: client=%p, adapter=%s (id=%d)\n",
+		client, client ? client->adapter->name : "null",
+		client ? client->adapter->nr : -1);
+	gi2c.inst[IMGSENSOR_I2C_DEV_4].pi2c_client = client;
 	return 0;
 }
 
@@ -98,6 +135,30 @@ static struct i2c_driver gi2c_driver[IMGSENSOR_I2C_DEV_MAX_NUM] = {
 		.owner = THIS_MODULE,
 #ifdef CONFIG_OF
 		.of_match_table = gof_device_id_2,
+#endif
+		},
+		.id_table = gi2c_dev_id,
+	},
+	{
+		.probe = imgsensor_i2c_probe_3,
+		.remove = imgsensor_i2c_remove,
+		.driver = {
+		.name = IMGSENSOR_I2C_DRV_NAME_3,
+		.owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		.of_match_table = gof_device_id_3,
+#endif
+		},
+		.id_table = gi2c_dev_id,
+	},
+	{
+		.probe = imgsensor_i2c_probe_4,
+		.remove = imgsensor_i2c_remove,
+		.driver = {
+		.name = IMGSENSOR_I2C_DRV_NAME_4,
+		.owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		.of_match_table = gof_device_id_4,
 #endif
 		},
 		.id_table = gi2c_dev_id,

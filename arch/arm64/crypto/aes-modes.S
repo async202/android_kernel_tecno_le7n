@@ -297,17 +297,19 @@ AES_ENTRY(aes_ctr_encrypt)
 	eor		v1.16b, v1.16b, v3.16b
 	st1		{v0.16b-v1.16b}, [x0], #32
 #else
-	ldr		q8, =0x30000000200000001	/* addends 1,2,3[,0] */
-	dup		v7.4s, w8
+	add		x7, x8, #1
 	mov		v0.16b, v4.16b
-	add		v7.4s, v7.4s, v8.4s
 	mov		v1.16b, v4.16b
-	rev32		v8.16b, v7.16b
 	mov		v2.16b, v4.16b
 	mov		v3.16b, v4.16b
-	mov		v1.s[3], v8.s[0]
-	mov		v2.s[3], v8.s[1]
-	mov		v3.s[3], v8.s[2]
+	rev		x7, x7
+	ins		v1.d[1], x7
+	add		x7, x8, #2
+	rev		x7, x7
+	ins		v2.d[1], x7
+	add		x7, x8, #3
+	rev		x7, x7
+	ins		v3.d[1], x7
 	ld1		{v5.16b-v7.16b}, [x1], #48	/* get 3 input blocks */
 	do_encrypt_block4x
 	eor		v0.16b, v5.16b, v0.16b

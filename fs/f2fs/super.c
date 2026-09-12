@@ -145,6 +145,7 @@ enum {
 	Opt_compress_algorithm,
 	Opt_compress_log_size,
 	Opt_compress_extension,
+        Opt_tran_gc,
 	Opt_err,
 };
 
@@ -212,6 +213,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_compress_algorithm, "compress_algorithm=%s"},
 	{Opt_compress_log_size, "compress_log_size=%u"},
 	{Opt_compress_extension, "compress_extension=%s"},
+        {Opt_tran_gc, "tran_gc"},
 	{Opt_err, NULL},
 };
 
@@ -923,6 +925,9 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 			F2FS_OPTION(sbi).compress_ext_cnt++;
 			kfree(name);
 			break;
+                case Opt_tran_gc:
+                        /* Vendor compatibility placeholder */
+                        break;
 		default:
 			f2fs_err(sbi, "Unrecognized mount option \"%s\" or missing value",
 				 p);

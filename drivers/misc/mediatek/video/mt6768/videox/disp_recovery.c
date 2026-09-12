@@ -706,6 +706,7 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	return 0;
 }
 
+int32_t __attribute__((weak)) nvt_update_firmware(char *firmware_name) { return 0; }
 extern int32_t nvt_update_firmware(char *firmware_name);
 
 /* ESD RECOVERY */

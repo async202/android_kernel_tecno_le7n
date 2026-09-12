@@ -52,6 +52,7 @@
 #define AFDRV_DW9814AF "DW9814AF"
 #define AFDRV_DW9839AF "DW9839AF"
 #define AFDRV_FP5510E2AF "FP5510E2AF"
+#define AFDRV_FP5516WE4AF "FP5516WE4AF"
 #define AFDRV_FM50AF "FM50AF"
 #define AFDRV_GAF001AF "GAF001AF"
 #define AFDRV_GAF002AF "GAF002AF"
@@ -81,16 +82,16 @@
 struct stAF_MotorInfo {
 	/* current position */
 	u32 u4CurrentPosition;
-	/* macro position */
-	u32 u4MacroPosition;
 	/* Infinity position */
 	u32 u4InfPosition;
-	/* Motor Status */
-	bool bIsMotorMoving;
-	/* Motor Open? */
-	bool bIsMotorOpen;
+	/* macro position */
+	u32 u4MacroPosition;
 	/* Support SR? */
 	bool bIsSupportSR;
+	/* Motor Open? */
+	bool bIsMotorOpen;
+	/* Motor Status */
+	bool bIsMotorMoving;
 };
 
 /* Structures */

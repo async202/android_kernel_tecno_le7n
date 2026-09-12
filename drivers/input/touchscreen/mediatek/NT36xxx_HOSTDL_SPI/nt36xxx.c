@@ -1931,9 +1931,20 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	}
 
 	//---set int-pin & request irq---
-	client->irq = gpio_to_irq(ts->irq_gpio);
-	if (client->irq) {
-		NVT_LOG("int_trigger_type=%d\n", ts->int_trigger_type);
+#ifdef CONFIG_OF
+	if (client->irq <= 0) {
+		struct device_node *tpd_node = of_find_compatible_node(NULL, NULL, "mediatek,touch");
+
+		if (tpd_node) {
+			client->irq = irq_of_parse_and_map(tpd_node, 0);
+			of_node_put(tpd_node);
+			NVT_LOG("Mapped IRQ %d from MediaTek touch node\n", client->irq);
+		}
+	}
+#endif
+
+	if (client->irq > 0) {
+		NVT_LOG("int_trigger_type=%d, irq=%d\n", ts->int_trigger_type, client->irq);
 		ts->irq_enabled = true;
 		ret = request_threaded_irq(client->irq, NULL, nvt_ts_work_func,
 				ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
@@ -1944,6 +1955,10 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 			nvt_irq_enable(false);
 			NVT_LOG("request irq %d succeed\n", client->irq);
 		}
+	} else {
+		NVT_ERR("Invalid IRQ number! Cannot register interrupt handler.\n");
+		ret = -EINVAL;
+		goto err_int_request_failed;
 	}
 
 #if WAKEUP_GESTURE
@@ -2350,7 +2365,8 @@ static int32_t nvt_ts_resume(struct device *dev)
 
 	// please make sure display reset(RESX) sequence and mipi dsi cmds sent before this
 #if NVT_TOUCH_SUPPORT_HW_RST
-	gpio_set_value(ts->reset_gpio, 1);
+	if (gpio_is_valid(ts->reset_gpio))
+		gpio_set_value(ts->reset_gpio, 1);
 #endif
 
 	if (is_ft_lcm == 0) {

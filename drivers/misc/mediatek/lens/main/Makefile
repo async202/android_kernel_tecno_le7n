@@ -24,6 +24,7 @@ MTK_CUSTOM_PATH  := $(srctree)/drivers/misc/mediatek
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/inc
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/lc898122af
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/dw9800waf
+subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/fp5516we4af
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/lc898212xdaf/inc
 ifeq ($(CONFIG_MTK_LENS_BU63165AF_SUPPORT), y)
   subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/bu63165af/inc
@@ -113,6 +114,9 @@ obj-y += common/ov5645af/
 obj-y  += common/wv511aaf/
 ifeq ($(CONFIG_MTK_LENS_DW9800WAF_SUPPORT), y)
   obj-y  += common/dw9800waf/
+endif
+ifeq ($(CONFIG_MTK_LENS_FP5516WE4AF_SUPPORT), y)
+  obj-y  += common/fp5516we4af/
 endif
 ifeq ($(CONFIG_MTK_LENS_CN3927AF_J19_SUPPORT), y)
   obj-y  += common/cn3927af_j19/

@@ -448,11 +448,11 @@ void fg_custom_init_from_header(void)
 
 	fgauge_get_profile_id();
 
-	fg_cust_data.versionID1 = FG_DAEMON_CMD_FROM_USER_NUMBER;
+	fg_cust_data.versionID1 = 87;
 	fg_cust_data.versionID2 = sizeof(fg_cust_data);
-	fg_cust_data.versionID3 = FG_KERNEL_CMD_FROM_USER_NUMBER;
-	fg_cust_data.fg_get_max = FG_GET_MAX;
-	fg_cust_data.fg_set_max = FG_SET_DATA_MAX;
+	fg_cust_data.versionID3 = 14;
+	fg_cust_data.fg_get_max = 10;
+	fg_cust_data.fg_set_max = 1016;
 
 	if (gm.gdev != NULL) {
 		fg_cust_data.hardwareVersion = gauge_get_hw_version();

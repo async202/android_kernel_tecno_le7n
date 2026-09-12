@@ -112,7 +112,6 @@ static int _disp_get_cmdq_slots(cmdqBackupSlotHandle Slot,
 {
 	int ret;
 	
-	pr_err("called from _disp_get_cmdq_slots\n");
 	ret = cmdqBackupReadSlotext(Slot, slot_index, value);
 
 	/* cmdq get slot fail */

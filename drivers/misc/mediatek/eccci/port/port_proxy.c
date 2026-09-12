@@ -807,11 +807,8 @@ static void port_dump_string(struct port_t *port, int dir,
 				"[%02X]", char_ptr[i]);
 			j += 4;
 		}
-		if (ret < 0 || ret >= DUMP_BUF_SIZE - j) {
-			CCCI_ERROR_LOG(port->md_id, TAG,
-				"%s-%d:snprintf fail,ret = %d\n", __func__, __LINE__, ret);
+		if (ret < 0 || ret >= DUMP_BUF_SIZE - j)
 			break;
-		}
 	}
 	buf[j] = '\0';
 	ts_nsec = local_clock();

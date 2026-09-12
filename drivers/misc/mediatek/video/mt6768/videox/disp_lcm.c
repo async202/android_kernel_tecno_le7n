@@ -1071,39 +1071,26 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 		lcmindex = 0;
 		}
 #endif
+	pr_info("[DISP] disp_lcm_probe: plcm_name='%s', is_lcm_inited=%d, lcm_count=%d\n",
+		plcm_name ? plcm_name : "NULL", is_lcm_inited, _lcm_count());
+
 	if (_lcm_count() == 0) {
-		DISPERR("no lcm driver defined in linux kernel driver\n");
+		pr_err("[DISP] no lcm driver defined in linux kernel driver\n");
 		return NULL;
 	} else if (_lcm_count() == 1) {
-		if (plcm_name == NULL) {
-			lcm_drv = lcm_driver_list[0];
-
-			isLCMFound = true;
-			isLCMInited = false;
-			DISPCHECK("LCM Name NULL\n");
-		} else {
-			lcm_drv = lcm_driver_list[0];
-			if (strcmp(lcm_drv->name, plcm_name)) {
-				DISPERR(
-					"FATAL ERROR!!!LCM Driver defined in kernel(%s) is different with LK(%s)\n",
-				    lcm_drv->name, plcm_name);
-				return NULL;
-			}
-
-			isLCMInited = true;
-			isLCMFound = true;
-		}
-
-		if (!is_lcm_inited) {
-			isLCMFound = true;
-			isLCMInited = false;
-			DISPCHECK("LCM not init\n");
-		}
-
+		lcm_drv = lcm_driver_list[0];
+		isLCMFound = true;
+		isLCMInited = is_lcm_inited;
 		lcmindex = 0;
+		pr_info("[DISP] using single LCM driver: %s\n", lcm_drv->name);
 	} else {
-		if (plcm_name == NULL) {
-			/* TODO: we need to detect all the lcm driver */
+		if (plcm_name == NULL || strlen(plcm_name) == 0) {
+			pr_info("[DISP] plcm_name is empty, defaulting to first LCM: %s\n",
+				lcm_driver_list[0]->name);
+			lcm_drv = lcm_driver_list[0];
+			isLCMFound = true;
+			isLCMInited = is_lcm_inited;
+			lcmindex = 0;
 		} else {
 			int i = 0;
 
@@ -1113,23 +1100,23 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 					isLCMFound = true;
 					isLCMInited = true;
 					lcmindex = i;
+					pr_info("[DISP] matched LCM driver: %s\n", lcm_drv->name);
 					break;
 				}
 			}
 			if (!isLCMFound) {
-				DISPERR(
-					"FATAL ERROR: can't found lcm driver:%s in linux kernel driver\n",
-				    plcm_name);
-			} else if (!is_lcm_inited) {
-				isLCMInited = false;
-				DISPCHECK("LCM not init\n");
+				pr_warn("[DISP] LCM driver '%s' not in list, fallback to %s\n",
+					plcm_name, lcm_driver_list[0]->name);
+				lcm_drv = lcm_driver_list[0];
+				isLCMFound = true;
+				isLCMInited = is_lcm_inited;
+				lcmindex = 0;
 			}
 		}
-		/* TODO: */
 	}
 
 	if (isLCMFound == false) {
-		DISPERR("FATAL ERROR!!!No LCM Driver defined\n");
+		pr_err("[DISP] FATAL ERROR: No LCM Driver defined\n");
 		return NULL;
 	}
 

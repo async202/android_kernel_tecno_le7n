@@ -16,6 +16,10 @@
 #include "mt6768-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 #include "../common/mtk-sp-spk-amp.h"
+#include <linux/i2c.h>
+#include <linux/delay.h>
+#include <linux/gpio.h>
+#include <linux/irqflags.h>
 
 /*
  * if need additional control for the ext spk amp that is connected
@@ -77,34 +81,52 @@ extern unsigned char aw87519_audio_hvload(void);
 extern unsigned char aw87519_audio_off(void);
 #endif
 
-static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
-				       struct snd_kcontrol *kcontrol,
-				       int event)
+// Transsion "Dual speaker driven by Headphone path" settings
+#define SPK_GPIO_PIN      491
+#define SPK_PA_TYPE_GPIO  405
+
+static int current_amp_mode = -1;
+static bool ext_amp_gpio_requested = false;
+
+static void tran_ext_amp_sel(int mode)
 {
-	struct snd_soc_dapm_context *dapm = w->dapm;
-	struct snd_soc_card *card = dapm->card;
+	if (current_amp_mode == mode) return;
+	current_amp_mode = mode;
 
-	dev_info(card->dev, "%s(), event %d\n", __func__, event);
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		/* spk amp on control */
-#ifdef CONFIG_SND_SOC_AW87519
-		aw87519_audio_kspk();
-#endif
-		break;
-	case SND_SOC_DAPM_PRE_PMD:
-		/* spk amp off control */
-#ifdef CONFIG_SND_SOC_AW87519
-		aw87519_audio_off();
-#endif
-		break;
-	default:
-		break;
+	if (!ext_amp_gpio_requested) {
+		/* Request main speaker amp switch GPIO */
+		if (gpio_request(SPK_GPIO_PIN, "tran_spk_amp") == 0)
+			gpio_direction_output(SPK_GPIO_PIN, 0);
+		
+		/* Request auxiliary PA type GPIO */
+		if (gpio_request(SPK_PA_TYPE_GPIO, "tran_pa_type") == 0)
+			gpio_direction_output(SPK_PA_TYPE_GPIO, 0);
+			
+		ext_amp_gpio_requested = true;
 	}
 
+	if (mode == 1) {
+		/* Route output to speaker */
+		gpio_set_value(SPK_GPIO_PIN, 1);
+		pr_err("SPK_AMP_SWITCH: Amp ON (gpio=%d set to 1)\n", SPK_GPIO_PIN);
+	} else {
+		/* Route output to headphones */
+		gpio_set_value(SPK_GPIO_PIN, 0);
+		pr_err("SPK_AMP_SWITCH: Amp OFF (gpio=%d set to 0)\n", SPK_GPIO_PIN);
+	}
+}
+
+static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
+                                       struct snd_kcontrol *kcontrol,
+                                       int event)
+{
+	if (event == SND_SOC_DAPM_POST_PMU) {
+		tran_ext_amp_sel(1);
+	} else if (event == SND_SOC_DAPM_PRE_PMD) {
+		tran_ext_amp_sel(0);
+	}
 	return 0;
-};
+}
 
 static const struct snd_soc_dapm_widget mt6768_mt6358_widgets[] = {
 	SND_SOC_DAPM_SPK(EXT_SPK_AMP_W_NAME, mt6768_mt6358_spk_amp_event),
@@ -117,8 +139,24 @@ static const struct snd_soc_dapm_route mt6768_mt6358_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 
+/* ALSA control for Transsion Audio HAL */
+static const char * const tran_amp_pa_str[] = {"0", "1", "2"};
+static const struct soc_enum tran_amp_pa_enum = SOC_ENUM_SINGLE_EXT(3, tran_amp_pa_str);
+
+static int tran_amp_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) {
+    ucontrol->value.integer.value[0] = 0; /* Default PA type expected by HAL */
+    return 0;
+}
+
+static int tran_amp_pa_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) {
+    return 0;
+}
+
 static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
+        SOC_ENUM_EXT("Tran_Amp_PA_Type", tran_amp_pa_enum, tran_amp_pa_get, tran_amp_pa_set),
+	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
+		     mt6768_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
 		     mt6768_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_OUT_TYPE_GET", mt6768_spk_type_enum[1],
@@ -293,7 +331,6 @@ static int mt6768_mt6358_init(struct snd_soc_pcm_runtime *rtd)
 	struct mt6358_codec_ops ops;
 	struct mtk_base_afe *afe = snd_soc_platform_get_drvdata(rtd->platform);
 	struct mt6768_afe_private *afe_priv = afe->platform_priv;
-	struct snd_soc_dapm_context *dapm = &rtd->card->dapm;
 
 	ops.enable_dc_compensation = mt6768_enable_dc_compensation;
 	ops.set_lch_dc_compensation = mt6768_set_lch_dc_compensation;
@@ -311,8 +348,6 @@ static int mt6768_mt6358_init(struct snd_soc_pcm_runtime *rtd)
 		mt6768_mt6358_mtkaif_calibration(rtd);
 
 	/* disable ext amp connection */
-	snd_soc_dapm_disable_pin(dapm, EXT_SPK_AMP_W_NAME);
-
 	return 0;
 }
 

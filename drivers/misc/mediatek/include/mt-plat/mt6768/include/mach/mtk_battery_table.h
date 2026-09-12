@@ -236,9 +236,9 @@ int g_temperature[MAX_TABLE] = {
 };
 
 
-#define BAT_NTC_10 0
+#define BAT_NTC_10 1
 #define BAT_NTC_47 0
-#define BAT_NTC_100 1
+#define BAT_NTC_100 0
 
 #if (BAT_NTC_100 == 1)
 #define RBAT_PULL_UP_R             100000

@@ -451,6 +451,10 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case CCCI_IOC_MD_RESET:
+		if (strcmp(current->comm, "muxreport") == 0) {
+			CCCI_NORMAL_LOG(md_id, FSM, "MD reset ioctl BLOCKED for %s\n", current->comm);
+			break;
+		}
 		CCCI_NORMAL_LOG(md_id, FSM,
 			"MD reset ioctl called by %s\n", current->comm);
 		ret = fsm_monitor_send_message(ctl->md_id,

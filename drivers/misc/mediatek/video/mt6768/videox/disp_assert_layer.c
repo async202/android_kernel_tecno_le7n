@@ -147,16 +147,11 @@ EXPORT_SYMBOL(DAL_SetScreenColor);
 
 enum DAL_STATUS DAL_Init(unsigned long layerVA, unsigned long layerPA)
 {
-	pr_debug("%s, layerVA=0x%lx, layerPA=0x%lx\n",
+	pr_info("[DISP] %s, layerVA=0x%lx, layerPA=0x%lx\n",
 		__func__, layerVA, layerPA);
 
 	dal_fb_addr = (void *)layerVA;
 	dal_fb_pa = layerPA;
-	DAL_CHECK_MFC_RET(MFC_Open(&mfc_handle, dal_fb_addr,
-		DAL_WIDTH, DAL_HEIGHT, DAL_BPP, DAL_FG_COLOR, DAL_BG_COLOR));
-	/* DAL_Clean(); */
-	DAL_SetScreenColor(DAL_COLOR_RED);
-
 	return DAL_STATUS_OK;
 }
 

@@ -23,7 +23,25 @@
  * 2. This should be the same as
  *     mediatek\custom\common\hal\imgsensor\src\sensorlist.cpp
  */
+static kal_uint32 dummy_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
+{
+	if (pfFunc)
+		*pfFunc = NULL;
+	return 0;
+}
+
 struct IMGSENSOR_INIT_FUNC_LIST kdSensorList[MAX_NUM_OF_SUPPORT_SENSOR] = {
+	/* Stock Tecno Pova 2 (LE7n) Sensor List Order */
+	/* 0 */ {OV02B1B_MIPI_SENSOR_ID, SENSOR_DRVNAME_OV02B1B_MIPI_RAW, OV02B1B_MIPI_RAW_SensorInit},
+	/* 1 */ {0x002c, "ov02b10_mipi_raw", dummy_SensorInit},
+	/* 2 */ {S5KGM1ST_SENSOR_ID, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW, S5KGM1ST_MIPI_RAW_SensorInit},
+	/* 3 */ {0x2000f8d1, "s5kgm1stext2_mipi_raw", S5KGM1ST_MIPI_RAW_SensorInit},
+	/* 4 */ {OV8856FF_SENSOR_ID, SENSOR_DRVNAME_OV8856FF_MIPI_RAW, OV8856FF_MIPI_RAW_SensorInit},
+	/* 5 */ {GC8034MIPI_SENSOR_ID, SENSOR_DRVNAME_GC8034_MIPI_RAW, GC8034_MIPI_RAW_SensorInit},
+	/* 6 */ {GC02M1_SENSOR_ID, SENSOR_DRVNAME_GC02M1_MIPI_RAW, GC02M1_MIPI_RAW_SensorInit},
+	/* 7 */ {GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_RAW, GC02M1B_MIPI_RAW_SensorInit},
+	/* 8 */ {0x6153, "gc6153_serial_yuv", GC6153_SERIAL_YUV_SensorInit},
+
 	/*IMX*/
 #if defined(IMX519_MIPI_RAW)
 	{IMX519_SENSOR_ID,
@@ -883,10 +901,6 @@ struct IMGSENSOR_INIT_FUNC_LIST kdSensorList[MAX_NUM_OF_SUPPORT_SENSOR] = {
 #if defined(IMX214_MIPI_RAW)
 	{IMX214_SENSOR_ID, SENSOR_DRVNAME_IMX214_MIPI_RAW,
 		IMX214_MIPI_RAW_SensorInit},
-#endif
-#if defined(GC8034_MIPI_RAW)
-	{GC8034MIPI_SENSOR_ID, SENSOR_DRVNAME_GC8034_MIPI_RAW,
-		GC8034MIPI_RAW_SensorInit},
 #endif
 #if defined(AR0543_MIPI_RAW)
 	{AR0543MIPI_SENSOR_ID, SENSOR_DRVNAME_AR0543_MIPI_RAW,

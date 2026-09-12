@@ -183,11 +183,11 @@ static unsigned int idle_cond_mask[IDLE_MODEL_NUM][NR_CG_GRPS] = {
 		0x00000000, /* MMSYS1 */
 	},
 	[IDLE_MODEL_DRAM] = {
-		0x00000B40, /* MTCMOS, 11:MFG, 9:VENC, 8:VDEC, 6:ISP */
+		0x00000B60, /* MTCMOS, 11:MFG, 9:VENC, 8:VDEC, 6:ISP, 5:DIS */
 		0x08040802, /* INFRA0, 27:dxcc_sec_core_cg_sta */
 		0x00BFF800, /* INFRA1, 8:icusb_cg_sta (removed), 14:i2c3 */
 		0x060406C1, /* INFRA2, 9:spi2 10:spi3 18:i2c5 25:spi4 26:spi5 */
-		0x0F040001, /* MMSYS0 */
+		0x7FFFFFFF, /* MMSYS0 */
 		0x00000000, /* MMSYS1 */
 	},
 };

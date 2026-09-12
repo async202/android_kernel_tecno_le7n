@@ -169,9 +169,15 @@ struct cust_mt65xx_led *get_cust_led_dtsi(void)
 
 	extern char *saved_command_line;
 	int bkl_id = 0;
-	char *bkl_ptr = (char *)strnstr(saved_command_line, ":bklic=", strlen(saved_command_line));
-	bkl_ptr += strlen(":bklic=");
-	bkl_id = simple_strtol(bkl_ptr, NULL, 10);
+	char *bkl_ptr = NULL;
+
+	if (saved_command_line) {
+		bkl_ptr = (char *)strnstr(saved_command_line, ":bklic=", strlen(saved_command_line));
+		if (bkl_ptr) {
+			bkl_ptr += strlen(":bklic=");
+			bkl_id = simple_strtol(bkl_ptr, NULL, 10);
+		}
+	}
 
 	if (pled_dtsi)
 		goto out;
