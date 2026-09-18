@@ -2187,6 +2187,9 @@ int battery_get_charger_zcv(void)
 {
 	u32 zcv = 0;
 
+	if (!gm.pbat_consumer || !gm.pbat_consumer->cm)
+		return 0;
+
 	charger_manager_get_zcv(gm.pbat_consumer, MAIN_CHARGER, &zcv);
 	return zcv;
 }
@@ -3212,6 +3215,17 @@ void exec_BAT_EC(int cmd, int param)
 			wakeup_fg_algo_cmd(
 				FG_INTR_KERNEL_CMD,
 				FG_KERNEL_CMD_AG_LOG_TEST, param);
+		}
+		break;
+	case 798:
+		{
+			bm_err(
+				"exe_BAT_EC cmd %d,FG_KERNEL_CMD_CHG_DECIMAL_RATE=%d\n",
+				cmd, param);
+			gm.soc_decimal_rate = param;
+			wakeup_fg_algo_cmd(
+				FG_INTR_KERNEL_CMD,
+				FG_KERNEL_CMD_CHG_DECIMAL_RATE, param);
 		}
 		break;
 

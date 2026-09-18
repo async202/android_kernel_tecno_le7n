@@ -448,11 +448,11 @@ void fg_custom_init_from_header(void)
 
 	fgauge_get_profile_id();
 
-	fg_cust_data.versionID1 = 87;
+	fg_cust_data.versionID1 = FG_DAEMON_CMD_FROM_USER_NUMBER;
 	fg_cust_data.versionID2 = sizeof(fg_cust_data);
-	fg_cust_data.versionID3 = 14;
-	fg_cust_data.fg_get_max = 10;
-	fg_cust_data.fg_set_max = 1016;
+	fg_cust_data.versionID3 = FG_KERNEL_CMD_FROM_USER_NUMBER;
+	fg_cust_data.fg_get_max = FG_GET_MAX;
+	fg_cust_data.fg_set_max = FG_SET_DATA_MAX;
 
 	if (gm.gdev != NULL) {
 		fg_cust_data.hardwareVersion = gauge_get_hw_version();
@@ -2679,6 +2679,35 @@ void fg_daemon_comm_INT_data(char *rcv, char *ret)
 			gm.is_reset_aging_factor = 0;
 		}
 		break;
+	case FG_GET_SOC_DECIMAL_RATE:
+		{
+			int decimal_rate = gm.soc_decimal_rate;
+
+			memcpy(&pret->output,
+				&decimal_rate, sizeof(decimal_rate));
+			bm_debug("[FG_GET_SOC_DECIMAL_RATE]soc_decimal_rate:%d %d\n",
+				decimal_rate, gm.soc_decimal_rate);
+		}
+		break;
+	case FG_GET_DIFF_SOC_SET:
+		{
+			/* 1 = 0.01%, 50 = 0.5% */
+			int soc_setting = 1;
+
+			memcpy(&pret->output,
+				&soc_setting, sizeof(soc_setting));
+		}
+		break;
+	case FG_GET_IS_FORCE_FULL:
+		{
+			/* 1 = trust customer full condition */
+			/* 0 = using gauge ori full flow */
+			int force_full = gm.is_force_full;
+
+			memcpy(&pret->output,
+				&force_full, sizeof(force_full));
+		}
+		break;
 	case FG_SET_SOC:
 		{
 			gm.soc = (prcv->input + 50) / 100;
@@ -2763,6 +2792,16 @@ void fg_daemon_comm_INT_data(char *rcv, char *ret)
 
 			bm_err("set GAUGE_MONITOR_SOFF_VALIDTIME ori:%d, new:%d\n",
 				ori_value, prcv->input);
+		}
+		break;
+	case FG_SET_ZCV_INTR_EN:
+		{
+			int zcv_intr_en = prcv->input;
+
+			if (zcv_intr_en == 0 || zcv_intr_en == 1)
+				gauge_set_zcv_interrupt_en(zcv_intr_en);
+
+			bm_err("set zcv_interrupt_en %d\n", zcv_intr_en);
 		}
 		break;
 	default:
@@ -4090,6 +4129,36 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 		bm_debug(
 			"[fr] FG_DAEMON_CMD_GET_RTC_INVALID = %d\n",
 			rtc_invalid);
+	}
+	break;
+
+	case FG_DAEMON_CMD_SET_BATTERY_CAPACITY:
+	{
+		struct fgd_cmd_param_t_8 param;
+
+		memcpy(&param, &msg->fgd_data[0],
+			sizeof(struct fgd_cmd_param_t_8));
+
+		if (param.data[10] != 0 && param.data[11] != 0) {
+			gm.show_ag = param.data[10];
+			gm.bat_health = param.data[11];
+			bm_err("%s:SET_BATTERY_CAPACITY: show_ag:%d, bat_health:%d\n",
+				__func__, gm.show_ag, gm.bat_health);
+		}
+
+		bm_debug(
+			"[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
+			param.data[0],
+			param.data[1],
+			param.data[2],
+			param.data[3],
+			param.data[4],
+			param.data[5],
+			param.data[6],
+			param.data[7],
+			param.data[8],
+			param.data[9],
+			param.data[4] * param.data[6] / 10000);
 	}
 	break;
 

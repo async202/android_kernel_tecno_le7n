@@ -211,6 +211,7 @@ enum Fg_daemon_cmds {
 	FG_DAEMON_CMD_DUMP_LOG,
 	FG_DAEMON_CMD_SEND_DATA,
 	FG_DAEMON_CMD_COMMUNICATION_INT,
+	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 };
@@ -230,6 +231,7 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_SAVE_DEBUG_PARAM,
 	FG_KERNEL_CMD_REQ_CHANGE_AGING_DATA,
 	FG_KERNEL_CMD_AG_LOG_TEST,
+	FG_KERNEL_CMD_CHG_DECIMAL_RATE,
 
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
@@ -300,6 +302,11 @@ struct fgd_cmd_param_t_7 {
 	int status;
 };
 
+struct fgd_cmd_param_t_8 {
+	int size;
+	int data[512];
+};
+
 enum daemon_cmd_int_data {
 	FG_GET_NORETURN = 0,
 	FG_GET_SHUTDOWN_CAR = 1,
@@ -308,6 +315,9 @@ enum daemon_cmd_int_data {
 	FG_GET_CURR_2 = 4,
 	FG_GET_REFRESH = 5,
 	FG_GET_IS_AGING_RESET = 6,
+	FG_GET_SOC_DECIMAL_RATE = 7,
+	FG_GET_DIFF_SOC_SET = 8,
+	FG_GET_IS_FORCE_FULL = 9,
 	FG_GET_MAX,
 	FG_SET_ANCHOR = 999,
 	FG_SET_SOC = FG_SET_ANCHOR + 1,
@@ -325,6 +335,7 @@ enum daemon_cmd_int_data {
 	FG_SET_OCV_Vtemp = FG_SET_ANCHOR + 13,
 	FG_SET_OCV_SOC = FG_SET_ANCHOR + 14,
 	FG_SET_CON0_SOFF_VALID = FG_SET_ANCHOR + 15,
+	FG_SET_ZCV_INTR_EN = FG_SET_ANCHOR + 16,
 	FG_SET_DATA_MAX,
 };
 
@@ -805,6 +816,11 @@ struct mtk_battery {
 
 	bool is_reset_aging_factor;
 	int aging_factor;
+
+	int bat_health;
+	int show_ag;
+	int soc_decimal_rate;
+	int is_force_full;
 
 	struct timespec uisoc_oldtime;
 

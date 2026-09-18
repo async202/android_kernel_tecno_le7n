@@ -1096,6 +1096,25 @@
 		camera4_mclk_6mA: camera4_mclk_6mA { pins_cmd_dat { pinmux = <0x6f01>; drive-strength = <6>; }; };
 		camera4_mclk_8mA: camera4_mclk_8mA { pins_cmd_dat { pinmux = <0x6f01>; drive-strength = <7>; }; };
 		camera4_mclk_gpio_mode: camera4_mclk_gpio_mode { pins_cmd_dat { pinmux = <0x6f00>; drive-strength = <4>; }; };
+
+		ocp81375default: ocp81375default {
+		};
+
+		ocp81375hwen_high: ocp81375hwen_high {
+			pins_cmd_dat {
+				pinmux = <0xa900>;
+				slew-rate = <1>;
+				output-high;
+			};
+		};
+
+		ocp81375hwen_low: ocp81375hwen_low {
+			pins_cmd_dat {
+				pinmux = <0xa900>;
+				slew-rate = <1>;
+				output-low;
+			};
+		};
 	};
 
 	sleep: sleep@10006000 {
@@ -2196,11 +2215,26 @@
 		sram_share_cnt = <0x01>;
 		sram_share_engine = <0x0d>;
 		sram_share_event = <0x2c6>;
-		mediatek,mailbox-gce = <0x2e>;
+		mediatek,mailbox-gce = <&gce_mbox>;
 		secure_thread = <0x06 0x08>;
-		mboxes = <&gce_mbox 0x00 0x00 &MCDI_CLUSTER &gce_mbox &STANDBY 0x00 &idledram &gce_mbox &MCDI_CPU 0x00 &MCDI_CLUSTER &gce_mbox &MCDI_CLUSTER 0x00 &MCDI_CLUSTER &gce_mbox &idlesyspll 0x00 &MCDI_CPU &gce_mbox &idlebus26m 0xffffffff &STANDBY &gce_mbox_svp &SUSPEND 0x00 &MCDI_CLUSTER &gce_mbox_svp &cpu0 0x00 &MCDI_CLUSTER &gce_mbox_svp &cpu1 0x00 &sysirq &gce_mbox &cpu2 0x00 &sysirq &gce_mbox &cpu3 0x00 &sysirq &gce_mbox &cpu4 0x00 &sysirq &gce_mbox &cpu5 0x00 &sysirq &gce_mbox &cpu6 0xffffffff &sysirq>;
-		clocks = <&infracfg_ao &cpu0 &infracfg_ao &io_cfg_bl &scpsys &MCDI_CPU>;
-		clock-names = "GCE\0GCE_TIMER\0MMSYS_MTCMOS";
+		mboxes = <&gce_mbox 0 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox 2 0 CMDQ_THR_PRIO_5>,
+			<&gce_mbox 3 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>,
+			<&gce_mbox 7 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+			<&gce_mbox_svp 8 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox_svp 9 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox_svp 10 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 12 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 13 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 14 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+		clocks = <&infracfg_ao CLK_IFR_GCE>,
+			<&infracfg_ao CLK_IFR_GCE_26M>,
+			<&scpsys SCP_SYS_DIS>;
+		clock-names = "GCE", "GCE_TIMER", "MMSYS_MTCMOS";
 		phandle = <0xa8>;
 	};
 
@@ -2209,8 +2243,9 @@
 		reg = <0x00 0x10238000 0x00 0x4000>;
 		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_LOW>;
 		default_tokens = [02 bc 02 bd 02 be 02 bf 02 c0 02 c6 02 c7];
-		clocks = <&infracfg_ao &cpu0 &infracfg_ao &io_cfg_bl>;
-		clock-names = "gce\0gce-timer";
+		clocks = <&infracfg_ao CLK_IFR_GCE>,
+			<&infracfg_ao CLK_IFR_GCE_26M>;
+		clock-names = "gce", "gce-timer";
 		#mbox-cells = <0x03>;
 		#gce-event-cells = <0x01>;
 		#gce-subsys-cells = <0x02>;
@@ -2222,8 +2257,9 @@
 		reg = <0x00 0x10238000 0x00 0x4000>;
 		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_LOW GIC_SPI 171 IRQ_TYPE_LEVEL_LOW>;
 		#mbox-cells = <0x03>;
-		clocks = <&infracfg_ao &cpu0 &infracfg_ao &io_cfg_bl>;
-		clock-names = "gce\0gce-timer";
+		clocks = <&infracfg_ao CLK_IFR_GCE>,
+			<&infracfg_ao CLK_IFR_GCE_26M>;
+		clock-names = "gce", "gce-timer";
 		phandle = <0x2f>;
 	};
 
@@ -2247,6 +2283,7 @@
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
 		phandle = <0xa9>;
+		status = "disabled";
 	};
 
 	accdet: accdet {
@@ -2813,6 +2850,7 @@
 
 			rt9471 {
 				charger_name = "primary_chg";
+				chg_name = "primary_chg";
 				chg_alias_name = "rt9471_chg";
 				rm-slave-addr = [53];
 				rm-name = "rt9471";
@@ -2835,6 +2873,10 @@
 
 	i2c6: i2c6@1100d000 {
 		compatible = "mediatek,i2c";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <400000>;
+		mediatek,use-open-drain;
 		id = <0x06>;
 		reg = <0x00 0x1100d000 0x00 0x1000 0x00 0x11000600 0x00 0x80>;
 		interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_LOW>;
@@ -2850,6 +2892,12 @@
 		rsel_cfg = <0x90>;
 		aed = <0x1a>;
 		phandle = <0xb6>;
+
+		strobe_main: strobe_main@63 {
+			compatible = "mediatek,strobe_main";
+			reg = <0x63>;
+			status = "okay";
+		};
 	};
 
 	i2c7: i2c7@11004000 {
@@ -3351,8 +3399,11 @@
 		compatible = "mediatek,smi_common";
 		reg = <0x00 0x14002000 0x00 0x1000>;
 		mediatek,smi-id = <0x05>;
-		clocks = <&scpsys &MCDI_CPU &mmsys_config &io_cfg_lt &mmsys_config &io_cfg_lm &mmsys_config &clk26m>;
-		clock-names = "scp-dis\0mm-comm0\0mm-comm1\0mm-common";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&mmsys_config CLK_MM_SMI_COMM0>,
+			<&mmsys_config CLK_MM_SMI_COMM1>,
+			<&mmsys_config CLK_MM_SMI_COMMON>;
+		clock-names = "scp-dis", "mm-comm0", "mm-comm1", "mm-common";
 		mmsys_config = <&mmsys_config>;
 	};
 
@@ -3368,22 +3419,37 @@
 		cam_step1 = <0x138 0x01 0x02 0x04>;
 		cam_step2 = <0xe4 0x01 0x02 0x05>;
 		vopp_steps = <0x00 0x01 0x03>;
-		disp_freq = "mm_step0\0mm_step1\0mm_step2";
-		mdp_freq = "mm_step0\0mm_step1\0mm_step2";
-		cam_freq = "cam_step0\0cam_step1\0cam_step2";
-		img_freq = "mm_step0\0mm_step1\0mm_step2";
-		vdec_freq = "mm_step0\0mm_step1\0mm_step2";
-		venc_freq = "venc_step0\0venc_step1\0venc_step2";
-		clocks = <&topckgen &vow_clk_miso_on &topckgen &mcdi &topckgen &pericfg &topckgen &infracfg_ao &topckgen &io_cfg_lb &topckgen &scpsys &topckgen &io_cfg_rm &topckgen &sysirq>;
-		clock-names = "mmdvfs_clk_mm_sel_ck\0mmdvfs_clk_venc_sel_ck\0mmdvfs_clk_cam_sel_ck\0mmdvfs_clk_mmpll_ck\0mmdvfs_clk_univpll1_d2_ck\0mmdvfs_clk_mmpll_d2_ck\0mmdvfs_clk_univpll_d3_ck\0mmdvfs_clk_syspll_d2_ck";
+		disp_freq = "mm_step0", "mm_step1", "mm_step2";
+		mdp_freq = "mm_step0", "mm_step1", "mm_step2";
+		cam_freq = "cam_step0", "cam_step1", "cam_step2";
+		img_freq = "mm_step0", "mm_step1", "mm_step2";
+		vdec_freq = "mm_step0", "mm_step1", "mm_step2";
+		venc_freq = "venc_step0", "venc_step1", "venc_step2";
+		clocks = <&topckgen CLK_TOP_MM_SEL>,
+			<&topckgen CLK_TOP_VENC_SEL>,
+			<&topckgen CLK_TOP_CAM_SEL>,
+			<&topckgen CLK_TOP_MMPLL>,
+			<&topckgen CLK_TOP_UNIVPLL1_D2>,
+			<&topckgen CLK_TOP_MMPLL_D2>,
+			<&topckgen CLK_TOP_UNIVPLL_D3>,
+			<&topckgen CLK_TOP_SYSPLL_D2>;
+		clock-names = "mmdvfs_clk_mm_sel_ck",
+			"mmdvfs_clk_venc_sel_ck",
+			"mmdvfs_clk_cam_sel_ck",
+			"mmdvfs_clk_mmpll_ck",
+			"mmdvfs_clk_univpll1_d2_ck",
+			"mmdvfs_clk_mmpll_d2_ck",
+			"mmdvfs_clk_univpll_d3_ck",
+			"mmdvfs_clk_syspll_d2_ck";
 	};
 
 	smi_larb0: smi_larb0@14003000 {
-		compatible = "mediatek,smi_larb0\0mediatek,smi_larb";
+		compatible = "mediatek,smi_larb0", "mediatek,smi_larb";
 		reg = <0x00 0x14003000 0x00 0x1000>;
 		mediatek,smi-id = <0x00>;
-		clocks = <&scpsys &MCDI_CPU &mmsys_config &gpio>;
-		clock-names = "scp-dis\0mm-larb0";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&mmsys_config CLK_MM_SMI_LARB0>;
+		clock-names = "scp-dis", "mm-larb0";
 		phandle = <0x57>;
 	};
 
@@ -3391,7 +3457,7 @@
 		compatible = "mediatek,mdp_rdma0";
 		reg = <0x00 0x14004000 0x00 0x1000>;
 		interrupts = <GIC_SPI 224 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config 0x00>;
+		clocks = <&mmsys_config CLK_MM_MDP_RDMA0>;
 		clock-names = "MDP_RDMA0";
 		phandle = <0x25>;
 	};
@@ -3400,7 +3466,7 @@
 		compatible = "mediatek,mdp_ccorr0";
 		reg = <0x00 0x14005000 0x00 0x1000>;
 		interrupts = <GIC_SPI 239 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &sysirq>;
+		clocks = <&mmsys_config CLK_MM_MDP_CCORR0>;
 		clock-names = "MDP_CCORR";
 		phandle = <0x2c>;
 	};
@@ -3409,7 +3475,7 @@
 		compatible = "mediatek,mdp_rsz0";
 		reg = <0x00 0x14006000 0x00 0x1000>;
 		interrupts = <GIC_SPI 225 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &STANDBY>;
+		clocks = <&mmsys_config CLK_MM_MDP_RSZ0>;
 		clock-names = "MDP_RSZ0";
 		phandle = <0x26>;
 	};
@@ -3418,7 +3484,7 @@
 		compatible = "mediatek,mdp_rsz1";
 		reg = <0x00 0x14007000 0x00 0x1000>;
 		interrupts = <GIC_SPI 226 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &MCDI_CPU>;
+		clocks = <&mmsys_config CLK_MM_MDP_RSZ1>;
 		clock-names = "MDP_RSZ1";
 		phandle = <0x27>;
 	};
@@ -3427,7 +3493,7 @@
 		compatible = "mediatek,mdp_wdma0";
 		reg = <0x00 0x14008000 0x00 0x1000>;
 		interrupts = <GIC_SPI 229 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &idlesyspll>;
+		clocks = <&mmsys_config CLK_MM_MDP_WDMA0>;
 		clock-names = "MDP_WDMA";
 		phandle = <0x28>;
 	};
@@ -3436,7 +3502,7 @@
 		compatible = "mediatek,mdp_wrot0";
 		reg = <0x00 0x14009000 0x00 0x1000>;
 		interrupts = <GIC_SPI 228 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &idledram>;
+		clocks = <&mmsys_config CLK_MM_MDP_WROT0>;
 		clock-names = "MDP_WROT0";
 		phandle = <0x29>;
 	};
@@ -3444,7 +3510,7 @@
 	mdp_tdshp0: mdp_tdshp0@1400a000 {
 		compatible = "mediatek,mdp_tdshp0";
 		reg = <0x00 0x1400a000 0x00 0x1000>;
-		clocks = <&mmsys_config &MCDI_CLUSTER>;
+		clocks = <&mmsys_config CLK_MM_MDP_TDSHP0>;
 		clock-names = "MDP_TDSHP";
 		phandle = <0x2a>;
 	};
@@ -3471,7 +3537,7 @@
 		compatible = "mediatek,disp_color0";
 		reg = <0x00 0x1400f000 0x00 0x1000>;
 		interrupts = <GIC_SPI 233 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&mmsys_config &cpu3>;
+		clocks = <&mmsys_config CLK_MM_DISP_COLOR0>;
 		clock-names = "MDP_COLOR";
 		phandle = <0x2b>;
 	};
@@ -3526,8 +3592,58 @@
 	dispsys {
 		compatible = "mediatek,dispsys";
 		mediatek,larb = <&smi_larb0>;
-		clocks = <&scpsys &MCDI_CPU &mmsys_config &clk26m &mmsys_config &gpio &mmsys_config &io_cfg_lt &mmsys_config &io_cfg_lm &mmsys_config &idlebus26m &mmsys_config &SUSPEND &mmsys_config &cpu1 &mmsys_config &cpu2 &mmsys_config &cpu3 &mmsys_config &cpu4 &mmsys_config &cpu5 &mmsys_config &cpu6 &mmsys_config &cpu7 &mmsys_config &gic &mmsys_config &pio &mmsys_config &io_cfg_tl &mmsys_config &clk32k &mmsys_config &cpu0 &apmixed &io_cfg_lt &topckgen &mipi_rx_ana_csi1a &infracfg_ao &msdc0_pins_default &clk26m &topckgen &io_cfg_rt &topckgen &gce_mbox &topckgen &apdma>;
-		clock-names = "MMSYS_MTCMOS\0MMSYS_SMI_COMMON\0MMSYS_SMI_LARB0\0MMSYS_GALS_COMM0\0MMSYS_GALS_COMM1\0MMSYS_DISP_OVL0\0MMSYS_DISP_OVL0_2L\0MMSYS_DISP_RDMA0\0MMSYS_DISP_WDMA0\0MMSYS_DISP_COLOR0\0MMSYS_DISP_CCORR0\0MMSYS_DISP_AAL0\0MMSYS_DISP_GAMMA0\0MMSYS_DISP_DITHER0\0MMSYS_DSI0_MM_CK\0MMSYS_DSI0_IF_CK\0MMSYS_IMG_DL_RELAY\0MMSYS_26M\0MMSYS_DISP_RSZ0\0APMIXED_MIPI_26M\0TOP_MUX_DISP_PWM\0DISP_PWM\0TOP_26M\0TOP_UNIVPLL2_D4\0TOP_ULPOSC1_D2\0TOP_ULPOSC1_D8";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&mmsys_config CLK_MM_SMI_COMMON>,
+			<&mmsys_config CLK_MM_SMI_LARB0>,
+			<&mmsys_config CLK_MM_SMI_COMM0>,
+			<&mmsys_config CLK_MM_SMI_COMM1>,
+			<&mmsys_config CLK_MM_DISP_OVL0>,
+			<&mmsys_config CLK_MM_DISP_OVL0_2L>,
+			<&mmsys_config CLK_MM_DISP_RDMA0>,
+			<&mmsys_config CLK_MM_DISP_WDMA0>,
+			<&mmsys_config CLK_MM_DISP_COLOR0>,
+			<&mmsys_config CLK_MM_DISP_CCORR0>,
+			<&mmsys_config CLK_MM_DISP_AAL0>,
+			<&mmsys_config CLK_MM_DISP_GAMMA0>,
+			<&mmsys_config CLK_MM_DISP_DITHER0>,
+			<&mmsys_config CLK_MM_DSI0>,
+			<&mmsys_config CLK_MM_DIG_DSI>,
+			<&mmsys_config CLK_MM_IMG_DL_RELAY>,
+			<&mmsys_config CLK_MM_F26M_HRTWT>,
+			<&mmsys_config CLK_MM_DISP_RSZ0>,
+			<&apmixed CLK_APMIXED_MIPID0_26M>,
+			<&topckgen CLK_TOP_DISP_PWM_SEL>,
+			<&infracfg_ao CLK_IFR_DISP_PWM>,
+			<&clk26m>,
+			<&topckgen CLK_TOP_UNIVPLL2_D4>,
+			<&topckgen CLK_TOP_ULPOSC1_D2>,
+			<&topckgen CLK_TOP_ULPOSC1_D8>;
+		clock-names = "MMSYS_MTCMOS",
+			"MMSYS_SMI_COMMON",
+			"MMSYS_SMI_LARB0",
+			"MMSYS_GALS_COMM0",
+			"MMSYS_GALS_COMM1",
+			"MMSYS_DISP_OVL0",
+			"MMSYS_DISP_OVL0_2L",
+			"MMSYS_DISP_RDMA0",
+			"MMSYS_DISP_WDMA0",
+			"MMSYS_DISP_COLOR0",
+			"MMSYS_DISP_CCORR0",
+			"MMSYS_DISP_AAL0",
+			"MMSYS_DISP_GAMMA0",
+			"MMSYS_DISP_DITHER0",
+			"MMSYS_DSI0_MM_CK",
+			"MMSYS_DSI0_IF_CK",
+			"MMSYS_IMG_DL_RELAY",
+			"MMSYS_26M",
+			"MMSYS_DISP_RSZ0",
+			"APMIXED_MIPI_26M",
+			"TOP_MUX_DISP_PWM",
+			"DISP_PWM",
+			"TOP_26M",
+			"TOP_UNIVPLL2_D4",
+			"TOP_ULPOSC1_D2",
+			"TOP_ULPOSC1_D8";
 	};
 
 	dsi_te: dsi_te {
@@ -3542,11 +3658,29 @@
 	};
 
 	imgsys: imgsys@15020000 {
-		compatible = "mediatek,imgsys\0syscon";
+		compatible = "mediatek,imgsys", "syscon";
 		reg = <0x00 0x15020000 0x00 0x1000>;
 		#clock-cells = <0x01>;
-		clocks = <&scpsys &MCDI_CPU &scpsys &idledram &scpsys &cpu1 &imgsys &sysirq &camsys &STANDBY &camsys &MCDI_CPU &camsys &MCDI_CLUSTER &camsys &idledram &camsys &idlesyspll &camsys &idlebus26m>;
-		clock-names = "ISP_SCP_SYS_DIS\0ISP_SCP_SYS_ISP\0ISP_SCP_SYS_CAM\0ISP_CLK_IMG_DIP\0ISP_CLK_CAM\0ISP_CLK_CAMTG\0ISP_CLK_CAM_SENINF\0ISP_CLK_CAMSV0\0ISP_CLK_CAMSV1\0ISP_CLK_CAMSV2";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&scpsys SCP_SYS_ISP>,
+			<&scpsys SCP_SYS_CAM>,
+			<&imgsys CLK_IMG_DIP>,
+			<&camsys CLK_CAM>,
+			<&camsys CLK_CAMTG>,
+			<&camsys CLK_CAM_SENINF>,
+			<&camsys CLK_CAMSV0>,
+			<&camsys CLK_CAMSV1>,
+			<&camsys CLK_CAMSV2>;
+		clock-names = "ISP_SCP_SYS_DIS",
+			"ISP_SCP_SYS_ISP",
+			"ISP_SCP_SYS_CAM",
+			"ISP_CLK_IMG_DIP",
+			"ISP_CLK_CAM",
+			"ISP_CLK_CAMTG",
+			"ISP_CLK_CAM_SENINF",
+			"ISP_CLK_CAMSV0",
+			"ISP_CLK_CAMSV1",
+			"ISP_CLK_CAMSV2";
 		phandle = <0x58>;
 	};
 
@@ -3568,16 +3702,18 @@
 		compatible = "mediatek,dpe";
 		reg = <0x00 0x15028000 0x00 0x1000>;
 		interrupts = <GIC_SPI 271 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&imgsys &MCDI_CPU>;
+		clocks = <&imgsys CLK_IMG_DPE>;
 		clock-names = "DPE_CG_IMG_DPE";
 	};
 
 	smi_larb2: smi_larb2@15021000 {
-		compatible = "mediatek,smi_larb2\0mediatek,smi_larb";
+		compatible = "mediatek,smi_larb2", "mediatek,smi_larb";
 		reg = <0x00 0x15021000 0x00 0x1000>;
 		mediatek,smi-id = <0x02>;
-		clocks = <&scpsys &idledram &mmsys_config &io_cfg_bl &imgsys 0x00>;
-		clock-names = "scp-isp\0mm-img\0img-larb2";
+		clocks = <&scpsys SCP_SYS_ISP>,
+			<&mmsys_config CLK_MM_SMI_IMG>,
+			<&imgsys CLK_IMG_LARB2>;
+		clock-names = "scp-isp", "mm-img", "img-larb2";
 		phandle = <0xca>;
 	};
 
@@ -3586,32 +3722,46 @@
 		mediatek,vcuid = <0x00>;
 		mediatek,vcuname = "vcu";
 		reg = <0x00 0x16000000 0x00 0x40000 0x00 0x17020000 0x00 0x10000 0x00 0x19002000 0x00 0x1000>;
-		mediatek,mailbox-gce = <0x2e>;
-		mboxes = <&gce_mbox &sysirq 0x00 &sysirq &gce_mbox &idledram 0x00 &sysirq>;
-		gce-event-names = "venc_eof\0venc_cmdq_pause_done\0venc_mb_done\0venc_128B_cnt_done";
-		gce-events = <0x2e 0x121 0x2e 0x122 0x2e 0x124 0x2e 0x125>;
+		mediatek,mailbox-gce = <&gce_mbox>;
+		mboxes = <&gce_mbox 1 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 5 0 CMDQ_THR_PRIO_1>;
+		gce-event-names = "venc_eof",
+			"venc_cmdq_pause_done",
+			"venc_mb_done",
+			"venc_128B_cnt_done";
+		gce-events = <&gce_mbox CMDQ_EVENT_VENC_FRAME_DONE>,
+			<&gce_mbox CMDQ_EVENT_VENC_PAUSE_DONE>,
+			<&gce_mbox CMDQ_EVENT_VENC_MB_DONE>,
+			<&gce_mbox CMDQ_EVENT_VENC_128BYTE_CNT_DONE>;
 		phandle = <0x5b>;
 	};
 
 	vdec_gcon: vdec_gcon@16000000 {
-		compatible = "mediatek,vdec_gcon\0syscon";
-		reg = <0x00 0x16000000 0x00 0x1000 0x00 0x16020000 0x00 0x400 0x00 0x16025000 0x00 0x1000>;
+		compatible = "mediatek,vdec_gcon", "syscon";
+		reg = <0x00 0x16000000 0x00 0x1000>,
+			<0x00 0x16025000 0x00 0x1000>;
 		mediatek,larb = <&smi_larb1>;
 		interrupts = <GIC_SPI 246 IRQ_TYPE_LEVEL_LOW>;
 		mediatek,vcu = <&vcu>;
-		clocks = <&scpsys &MCDI_CPU &scpsys &cpu3 &vdec_gcon 0x00>;
-		clock-names = "MT_SCP_SYS_DIS\0MT_SCP_SYS_VDE\0MT_CG_VDEC";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&scpsys SCP_SYS_VDEC>,
+			<&vdec_gcon CLK_VDEC_CKEN>;
+		clock-names = "MT_SCP_SYS_DIS",
+			"MT_SCP_SYS_VDE",
+			"MT_CG_VDEC";
 		#clock-cells = <0x01>;
 		phandle = <0x5c>;
 	};
 
 	smi_larb1: smi_larb1@16010000 {
-		compatible = "mediatek,smi_larb1\0mediatek,smi_larb";
+		compatible = "mediatek,smi_larb1", "mediatek,smi_larb";
 		reg = <0x00 0x16010000 0x00 0x1000>;
 		interrupts = <GIC_SPI 247 IRQ_TYPE_LEVEL_LOW>;
 		mediatek,smi-id = <0x01>;
-		clocks = <&scpsys &cpu3 &mmsys_config &io_cfg_rt &vdec_gcon &MCDI_CPU>;
-		clock-names = "scp-vdec\0mm-vdec\0vdec-larb1";
+		clocks = <&scpsys SCP_SYS_VDEC>,
+			<&mmsys_config CLK_MM_SMI_VDEC>,
+			<&vdec_gcon CLK_VDEC_LARB1_CKEN>;
+		clock-names = "scp-vdec", "mm-vdec", "vdec-larb1";
 		phandle = <0x5a>;
 	};
 
@@ -3632,23 +3782,31 @@
 	};
 
 	venc_gcon: venc_gcon@17000000 {
-		compatible = "mediatek,venc_gcon\0syscon";
-		reg = <0x00 0x17000000 0x00 0x1000 0x00 0x17020000 0x00 0x1000>;
+		compatible = "mediatek,venc_gcon", "syscon";
+		reg = <0x00 0x17000000 0x00 0x1000>,
+			<0x00 0x17020000 0x00 0x1000>;
 		mediatek,larb = <&smi_larb4>;
 		interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_LOW>;
 		mediatek,vcu = <&vcu>;
-		clocks = <&scpsys &MCDI_CPU &scpsys &cpu2 &venc_gcon &sysirq>;
-		clock-names = "MT_SCP_SYS_DIS\0MT_SCP_SYS_VEN\0MT_CG_VENC";
+		clocks = <&scpsys SCP_SYS_DIS>,
+			<&scpsys SCP_SYS_VENC>,
+			<&venc_gcon CLK_VENC_SET1_VENC>;
+		clock-names = "MT_SCP_SYS_DIS",
+			"MT_SCP_SYS_VEN",
+			"MT_CG_VENC";
 		#clock-cells = <0x01>;
 		phandle = <0x5e>;
 	};
 
 	smi_larb4: smi_larb4@17010000 {
-		compatible = "mediatek,smi_larb4\0mediatek,smi_larb";
+		compatible = "mediatek,smi_larb4", "mediatek,smi_larb";
 		reg = <0x00 0x17010000 0x00 0x1000>;
 		mediatek,smi-id = <0x04>;
-		clocks = <&scpsys &cpu2 &mmsys_config &io_cfg_rb &venc_gcon &sysirq &venc_gcon &STANDBY>;
-		clock-names = "scp-venc\0mm-venc\0venc-venc\0venc-jpgenc";
+		clocks = <&scpsys SCP_SYS_VENC>,
+			<&mmsys_config CLK_MM_SMI_VENC>,
+			<&venc_gcon CLK_VENC_SET1_VENC>,
+			<&venc_gcon CLK_VENC_SET2_JPGENC>;
+		clock-names = "scp-venc", "mm-venc", "venc-venc", "venc-jpgenc";
 		phandle = <0x5d>;
 	};
 
@@ -3662,7 +3820,7 @@
 		compatible = "mediatek,venc_jpg";
 		reg = <0x00 0x17030000 0x00 0x10000>;
 		interrupts = <GIC_SPI 245 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&venc_gcon &STANDBY>;
+		clocks = <&venc_gcon CLK_VENC_SET2_JPGENC>;
 		clock-names = "MT_CG_VENC_JPGENC";
 	};
 
@@ -3701,11 +3859,13 @@
 	};
 
 	smi_larb3: smi_larb3@1a002000 {
-		compatible = "mediatek,smi_larb3\0mediatek,smi_larb";
+		compatible = "mediatek,smi_larb3", "mediatek,smi_larb";
 		reg = <0x00 0x1a002000 0x00 0x1000>;
 		mediatek,smi-id = <0x03>;
-		clocks = <&scpsys &cpu1 &mmsys_config &io_cfg_rm &camsys 0x00>;
-		clock-names = "scp-cam\0mm-cam\0cam-larb3";
+		clocks = <&scpsys SCP_SYS_CAM>,
+			<&mmsys_config CLK_MM_SMI_CAM>,
+			<&camsys CLK_CAM_LARB3>;
+		clock-names = "scp-cam", "mm-cam", "cam-larb3";
 		phandle = <0xcb>;
 	};
 
@@ -3917,6 +4077,11 @@
 
 	flashlights_ocp81375: flashlights_ocp81375 {
 		compatible = "mediatek,flashlights_ocp81375";
+		pinctrl-names = "ocp81375default", "ocp81375hwen_high", "ocp81375hwen_low";
+		pinctrl-0 = <&ocp81375default>;
+		pinctrl-1 = <&ocp81375hwen_high>;
+		pinctrl-2 = <&ocp81375hwen_low>;
+		status = "okay";
 		phandle = <0xcf>;
 	};
 
@@ -4476,3 +4641,87 @@
 	};
 
 };
+
+&pio {
+	fingerprint_default: fingerprint_default {
+	};
+
+	fingerprint_eint: gpio7_eint {
+		pins_cmd_dat {
+			pinmux = <0x700>;
+			slew-rate = <0x0>;
+			bias-disable;
+		};
+	};
+
+	fingerprint_eint_pull_down: gpio7_eint_pull_down {
+		pins_cmd_dat {
+			pinmux = <0x700>;
+			slew-rate = <0x0>;
+			bias-pull-down = <0x0>;
+			output-low;
+		};
+	};
+
+	fingerprint_rst_one: rst_out_one {
+		pins_cmd_dat {
+			pinmux = <0x600>;
+			slew-rate = <0x1>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	fingerprint_rst_zero: rst_out_zero {
+		pins_cmd_dat {
+			pinmux = <0x600>;
+			slew-rate = <0x1>;
+			bias-disable;
+			output-low;
+		};
+	};
+};
+
+&spi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	fingerprint@0 {
+		compatible = "tran_fp", "silead,silead_fp";
+		reg = <0>;
+		spi-max-frequency = <27000000>;
+		interrupt-parent = <&pio>;
+		interrupts = <7 IRQ_TYPE_EDGE_RISING 7 0>;
+		debounce = <7 0>;
+		irq-gpio = <7>;
+		irq-gpio-std = <&pio 7 0>;
+		reset-gpio = <6>;
+		reset-gpio-std = <&pio 6 0>;
+		vmch-supply = <&mt_pmic_vio28_ldo_reg>;
+		pinctrl-names = "tran_fp_default", "tran_fp_pin_irq", "tran_fp_irq_pull_down", "tran_fp_reset_high", "tran_fp_reset_low";
+		pinctrl-0 = <&fingerprint_default>;
+		pinctrl-1 = <&fingerprint_eint>;
+		pinctrl-2 = <&fingerprint_eint_pull_down>;
+		pinctrl-3 = <&fingerprint_rst_one>;
+		pinctrl-4 = <&fingerprint_rst_zero>;
+		status = "okay";
+	};
+};
+
+&odm {
+	fingerprint {
+		compatible = "tran_fp";
+		interrupt-parent = <&pio>;
+		interrupts = <7 IRQ_TYPE_EDGE_RISING 7 0>;
+		debounce = <7 0>;
+		pinctrl-names = "tran_fp_default", "tran_fp_pin_irq", "tran_fp_irq_pull_down", "tran_fp_reset_high", "tran_fp_reset_low";
+		pinctrl-0 = <&fingerprint_default>;
+		pinctrl-1 = <&fingerprint_eint>;
+		pinctrl-2 = <&fingerprint_eint_pull_down>;
+		pinctrl-3 = <&fingerprint_rst_one>;
+		pinctrl-4 = <&fingerprint_rst_zero>;
+		status = "okay";
+	};
+};
+

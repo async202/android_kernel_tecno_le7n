@@ -708,10 +708,12 @@ int charger_manager_get_current_charging_type(struct charger_consumer *consumer)
 
 int charger_manager_get_zcv(struct charger_consumer *consumer, int idx, u32 *uV)
 {
-	struct charger_manager *info = consumer->cm;
+	struct charger_manager *info = NULL;
 	int ret = 0;
 	struct charger_device *pchg = NULL;
 
+	if (consumer != NULL)
+		info = consumer->cm;
 
 	if (info != NULL) {
 		if (idx == MAIN_CHARGER) {

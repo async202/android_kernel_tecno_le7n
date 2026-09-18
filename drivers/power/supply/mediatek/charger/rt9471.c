@@ -1850,8 +1850,11 @@ static int rt9471_parse_dt(struct rt9471_chip *chip)
 	chip->desc = desc;
 
 	ret = of_property_read_string(np, "chg_name", &desc->chg_name);
-	if (ret < 0)
-		dev_info(chip->dev, "%s no chg_name(%d)\n", __func__, ret);
+	if (ret < 0) {
+		ret = of_property_read_string(np, "charger_name", &desc->chg_name);
+		if (ret < 0)
+			dev_info(chip->dev, "%s no chg_name(%d)\n", __func__, ret);
+	}
 
 	ret = of_property_read_string(np, "chg_alias_name",
 				      &chip->chg_props.alias_name);

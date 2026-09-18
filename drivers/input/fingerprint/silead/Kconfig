@@ -1,0 +1,9 @@
+#
+# Silead Fingerprint driver configuration
+#
+
+config SILEAD_FP
+	tristate "SILEAD fingerprint support"
+	default y
+	help
+	  This supports Silead SPI Fingerprint drivers for MTK platforms.

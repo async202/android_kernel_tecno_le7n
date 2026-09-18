@@ -1432,7 +1432,7 @@ static signed int fm_cdev_setup(struct fm *fm)
 	return ret;
 }
 
-#define FM_LAN_ENABLE    398 /* ana swtich gpio73 */
+#define FM_LAN_ENABLE    417 /* ana switch gpio92 on Tecno LE7n (325 + 92) */
 
 void fm_lan_enable(void)
 {
@@ -1440,6 +1440,7 @@ void fm_lan_enable(void)
 
 	gpio_set_value(FM_LAN_ENABLE, 1);
 	fm->lan_enable = 1;
+	pr_info("%s: enabled FM LNA/antenna switch (GPIO %d set to 1)\n", __func__, FM_LAN_ENABLE);
 }
 EXPORT_SYMBOL(fm_lan_enable);
 
@@ -1449,6 +1450,7 @@ void fm_lan_disable(void)
 
 	gpio_set_value(FM_LAN_ENABLE, 0);
 	fm->lan_enable = 0;
+	pr_info("%s: disabled FM LNA/antenna switch (GPIO %d set to 0)\n", __func__, FM_LAN_ENABLE);
 }
 EXPORT_SYMBOL(fm_lan_disable);
 
@@ -1490,10 +1492,10 @@ static signed int fm_lan_setup(struct fm *fm)
 	/* default low */
 	ret = gpio_request(FM_LAN_ENABLE, "fm_lan_enable");
 	if (ret < 0) {
-		printk("%s, request fm lan enable failed\n", __func__);
+		printk("%s, request fm lan enable failed: %d\n", __func__, ret);
 		return ret;
 	}
-	gpio_set_value(FM_LAN_ENABLE, 0);
+	gpio_direction_output(FM_LAN_ENABLE, 0);
 
 	fm->lan_enable = 0;
 

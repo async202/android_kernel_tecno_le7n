@@ -112,7 +112,8 @@ static int fops_vcodec_open(struct file *file)
 		}
 
 		dev->dec_capability =
-			vcu_get_vdec_hw_capa(dev->vcu_plat_dev);
+			vcu_get_vdec_hw_capa(dev->vcu_plat_dev) |
+			VCODEC_CAPABILITY_4K_DISABLED;
 		mtk_v4l2_debug(0, "decoder capability %x", dev->dec_capability);
 	}
 
@@ -266,6 +267,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&dev->ctx_list);
 	dev->plat_dev = pdev;
+	dev->dec_capability = VCODEC_CAPABILITY_4K_DISABLED;
 
 	dev->vcu_plat_dev = vcu_get_plat_device(dev->plat_dev);
 	if (dev->vcu_plat_dev == NULL) {
@@ -280,7 +282,15 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	}
 
 	for (i = VDEC_SYS; i < NUM_MAX_VDEC_REG_BASE; i++) {
-		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+		int res_idx = i;
+
+		if (i == VDEC_MISC) {
+			struct resource *res_misc = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+
+			if (res_misc && (res_misc->start & 0xfffff000) == 0x16025000)
+				res_idx = 2;
+		}
+		res = platform_get_resource(pdev, IORESOURCE_MEM, res_idx);
 		if (res == NULL) {
 			dev_err(&pdev->dev, "get memory resource failed.");
 			ret = -ENXIO;
@@ -291,8 +301,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 			ret = PTR_ERR((__force void *)dev->dec_reg_base[i]);
 			goto err_res;
 		}
-		mtk_v4l2_debug(2, "reg[%d] base=0x%px",
-			i, dev->dec_reg_base[i]);
+		pr_info("[MTK_V4L2] reg[%d] (res %d: 0x%pa) base=0x%px\n",
+			i, res_idx, &res->start, dev->dec_reg_base[i]);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);

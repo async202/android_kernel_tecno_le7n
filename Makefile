@@ -369,6 +369,7 @@ HOSTCXXFLAGS := -O2 $(HOST_LFS_CFLAGS)
 HOSTLDFLAGS  := $(HOST_LFS_LDFLAGS)
 HOST_LOADLIBES := $(HOST_LFS_LIBS)
 
+# Make variables (CC, etc...)
 ifeq ($(LLVM),1)
 CLANG_TRIPLE  := aarch64-linux-gnu-
 CROSS_COMPILE ?= aarch64-linux-android-
