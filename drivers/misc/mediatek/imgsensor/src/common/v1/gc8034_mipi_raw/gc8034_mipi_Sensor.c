@@ -1271,11 +1271,11 @@ static void binning_setting(void)
 {
 	/* SYS */
 	write_cmos_sensor(0xf2, 0x00);
-	write_cmos_sensor(0xf4, 0x90);
-	write_cmos_sensor(0xf5, 0x3d);
+	write_cmos_sensor(0xf4, 0x80);
+	write_cmos_sensor(0xf5, 0x19);
 	write_cmos_sensor(0xf6, 0x44);
-	write_cmos_sensor(0xf8, 0x61);
-	write_cmos_sensor(0xfa, 0x41);
+	write_cmos_sensor(0xf8, 0x63);
+	write_cmos_sensor(0xfa, 0x45);
 	write_cmos_sensor(0xf9, 0x00);
 	write_cmos_sensor(0xf7, 0x95);
 	write_cmos_sensor(0xfc, 0x00);
@@ -1333,7 +1333,7 @@ static void binning_setting(void)
 	write_cmos_sensor(0x2a, 0x08);
 	write_cmos_sensor(0x2b, 0x07);
 	write_cmos_sensor(0xfe, 0x00);
-	write_cmos_sensor(0x3f, 0x00);
+	write_cmos_sensor(0x3f, 0x91);
 	BorF = 0;
 }
 
