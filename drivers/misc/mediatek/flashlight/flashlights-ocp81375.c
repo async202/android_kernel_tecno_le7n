@@ -1037,6 +1037,123 @@ static struct platform_driver ocp81375_platform_driver = {
 	},
 };
 
+static struct class *torch_class;
+static struct device *torch_dev;
+static struct class *sub_torch_class;
+static struct device *sub_torch_dev;
+
+static int g_torch_level;
+static int g_sub_torch_level;
+
+static ssize_t torch_level_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", g_torch_level);
+}
+
+static ssize_t torch_level_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	int level = 0;
+
+	if (kstrtoint(buf, 10, &level) != 0 && sscanf(buf, "%d", &level) != 1)
+		return -EINVAL;
+
+	g_torch_level = level;
+	pr_info("torch_level_store: level=%d\n", level);
+
+	if (level > 0) {
+		ocp81375_set_driver(1);
+		ocp81375_set_scenario(FLASHLIGHT_SCENARIO_FLASHLIGHT |
+				      FLASHLIGHT_SCENARIO_DECOUPLE);
+		ocp81375_set_level(OCP81375_CHANNEL_CH2, level);
+		ocp81375_timeout_ms[OCP81375_CHANNEL_CH2] = 0;
+		ocp81375_operate(OCP81375_CHANNEL_CH2, OCP81375_ENABLE);
+	} else {
+		ocp81375_operate(OCP81375_CHANNEL_CH2, OCP81375_DISABLE);
+		ocp81375_set_driver(0);
+	}
+
+	return count;
+}
+
+static ssize_t sub_torch_level_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", g_sub_torch_level);
+}
+
+static ssize_t sub_torch_level_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	int level = 0;
+
+	if (kstrtoint(buf, 10, &level) != 0 && sscanf(buf, "%d", &level) != 1)
+		return -EINVAL;
+
+	g_sub_torch_level = level;
+	pr_info("sub_torch_level_store: level=%d\n", level);
+
+	if (level > 0) {
+		ocp81375_set_driver(1);
+		ocp81375_set_scenario(FLASHLIGHT_SCENARIO_FLASHLIGHT |
+				      FLASHLIGHT_SCENARIO_DECOUPLE);
+		ocp81375_set_level(OCP81375_CHANNEL_CH1, level);
+		ocp81375_timeout_ms[OCP81375_CHANNEL_CH1] = 0;
+		ocp81375_operate(OCP81375_CHANNEL_CH1, OCP81375_ENABLE);
+	} else {
+		ocp81375_operate(OCP81375_CHANNEL_CH1, OCP81375_DISABLE);
+		ocp81375_set_driver(0);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(torch_level, 0664, torch_level_show, torch_level_store);
+static DEVICE_ATTR(sub_torch_level, 0664, sub_torch_level_show, sub_torch_level_store);
+
+static int rgt_torch_level_init(void)
+{
+	torch_class = class_create(THIS_MODULE, "torch");
+	if (IS_ERR(torch_class)) {
+		pr_err("Failed to create torch class\n");
+		return PTR_ERR(torch_class);
+	}
+	torch_dev = device_create(torch_class, NULL, 0, NULL, "torch");
+	if (IS_ERR(torch_dev)) {
+		pr_err("Failed to create torch device\n");
+		class_destroy(torch_class);
+		return PTR_ERR(torch_dev);
+	}
+	if (device_create_file(torch_dev, &dev_attr_torch_level))
+		pr_err("Failed to create torch_level attribute\n");
+
+	pr_info("rgt_torch_level_init: created /sys/devices/virtual/torch/torch/torch_level\n");
+	return 0;
+}
+
+static int rgt_sub_torch_level_init(void)
+{
+	sub_torch_class = class_create(THIS_MODULE, "sub_torch");
+	if (IS_ERR(sub_torch_class)) {
+		pr_err("Failed to create sub_torch class\n");
+		return PTR_ERR(sub_torch_class);
+	}
+	sub_torch_dev = device_create(sub_torch_class, NULL, 0, NULL, "sub_torch");
+	if (IS_ERR(sub_torch_dev)) {
+		pr_err("Failed to create sub_torch device\n");
+		class_destroy(sub_torch_class);
+		return PTR_ERR(sub_torch_dev);
+	}
+	if (device_create_file(sub_torch_dev, &dev_attr_sub_torch_level))
+		pr_err("Failed to create sub_torch_level attribute\n");
+
+	pr_info("rgt_sub_torch_level_init: created /sys/devices/virtual/sub_torch/sub_torch/sub_torch_level\n");
+	return 0;
+}
+
 static int __init flashlight_ocp81375_init(void)
 {
 	int ret;
@@ -1057,6 +1174,9 @@ static int __init flashlight_ocp81375_init(void)
 		return ret;
 	}
 
+	rgt_torch_level_init();
+	rgt_sub_torch_level_init();
+
 	pr_debug("Init done.\n");
 
 	return 0;
@@ -1065,6 +1185,20 @@ static int __init flashlight_ocp81375_init(void)
 static void __exit flashlight_ocp81375_exit(void)
 {
 	pr_debug("Exit start.\n");
+
+	if (sub_torch_dev) {
+		device_remove_file(sub_torch_dev, &dev_attr_sub_torch_level);
+		device_destroy(sub_torch_class, 0);
+	}
+	if (sub_torch_class && !IS_ERR(sub_torch_class))
+		class_destroy(sub_torch_class);
+
+	if (torch_dev) {
+		device_remove_file(torch_dev, &dev_attr_torch_level);
+		device_destroy(torch_class, 0);
+	}
+	if (torch_class && !IS_ERR(torch_class))
+		class_destroy(torch_class);
 
 	platform_driver_unregister(&ocp81375_platform_driver);
 
