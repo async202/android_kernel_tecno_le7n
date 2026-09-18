@@ -2805,6 +2805,91 @@ static int rt9471_enable_cable_drop_comp(struct charger_device *chg_dev,
 	return rt9471_enable_pump_express(chip, true);
 }
 
+static int rt9471_ext_enable_bc12(struct rt9471_chip *chip, bool en)
+{
+	dev_info(chip->dev, "%s en = %d\n", __func__, en);
+	return rt9471_i2c_update_bits(chip, RT9471_REG_DPDMDET,
+				      en ? RT9471_BC12_EN_MASK : 0,
+				      RT9471_BC12_EN_MASK);
+}
+
+static const enum charger_type port_stat_to_type_tbl[] = {
+	APPLE_2_1A_CHARGER,	/* 0: Apple 12W (0x8) */
+	STANDARD_CHARGER,	/* 1: Samsung 10W (0x9) */
+	APPLE_1_0A_CHARGER,	/* 2: Apple 10W (0xA) */
+	STANDARD_CHARGER,	/* 3: Apple 5W (0xB) */
+	NONSTANDARD_CHARGER,	/* 4: NSDP (0xC) */
+	STANDARD_HOST,		/* 5: SDP (0xD) */
+	CHARGING_HOST,		/* 6: CDP (0xE) */
+	STANDARD_CHARGER,	/* 7: DCP (0xF) */
+};
+
+static int mtk_ext_chgdet(struct charger_device *chg_dev)
+{
+	struct rt9471_chip *chip = dev_get_drvdata(&chg_dev->dev);
+	u8 dev_id = 0, status = 0, port_stat = 0;
+	int ret, count = 100;
+	enum charger_type chr_type = CHARGER_UNKNOWN;
+
+	mutex_lock(&chip->io_lock);
+	ret = i2c_smbus_read_i2c_block_data(chip->client, RT9471_REG_INFO, 1, &dev_id);
+	mutex_unlock(&chip->io_lock);
+	if (ret < 0) {
+		dev_notice(chip->dev, "%s reg0x%02X fail(%d)\n",
+			   "__rt9471_i2c_read_byte", RT9471_REG_INFO, ret);
+		return CHARGER_UNKNOWN;
+	}
+
+	if ((((dev_id >> RT9471_DEVID_SHIFT) | 4) & 0xf) != 0xe) {
+		dev_info(chip->dev, "%s incorrect devid 0x%X\n", __func__,
+			 (dev_id >> RT9471_DEVID_SHIFT) & 0xf);
+		return CHARGER_UNKNOWN;
+	}
+
+	Charger_Detect_Init();
+
+	rt9471_ext_enable_bc12(chip, false);
+	rt9471_ext_enable_bc12(chip, true);
+
+	while (count > 0) {
+		mdelay(24);
+		mutex_lock(&chip->io_lock);
+		ret = i2c_smbus_read_i2c_block_data(chip->client, RT9471_REG_STATUS, 1, &status);
+		mutex_unlock(&chip->io_lock);
+		if (ret < 0) {
+			dev_notice(chip->dev, "%s reg0x%02X fail(%d)\n",
+				   "__rt9471_i2c_read_byte", RT9471_REG_STATUS, ret);
+			count--;
+			continue;
+		}
+
+		port_stat = (status & RT9471_PORTSTAT_MASK) >> RT9471_PORTSTAT_SHIFT;
+		dev_info(chip->dev, "%s port_stat = 0x%X\n", __func__, port_stat);
+		if (port_stat == 0) {
+			count--;
+			continue;
+		}
+
+		if (status & 0x80) {
+			chr_type = port_stat_to_type_tbl[(port_stat - 8) & 7];
+		} else {
+			chr_type = NONSTANDARD_CHARGER;
+		}
+		break;
+	}
+
+	if (count == 0) {
+		dev_info(chip->dev, "%s bc12 failed\n", __func__);
+		chr_type = CHARGER_UNKNOWN;
+	}
+
+	dev_info(chip->dev, "%s chg type = %d\n", __func__, chr_type);
+	if (chr_type != STANDARD_CHARGER)
+		Charger_Detect_Release();
+
+	return chr_type;
+}
+
 static struct charger_ops rt9471_chg_ops = {
 	/* cable plug in/out for primary charger */
 	.plug_in = rt9471_plug_in,
@@ -2877,6 +2962,7 @@ static struct charger_ops rt9471_chg_ops = {
 	.reset_ta = rt9471_reset_ta,
 	.set_pe20_efficiency_table = rt9471_set_pe20_efficiency_table,
 	.enable_cable_drop_comp = rt9471_enable_cable_drop_comp,
+	.get_ext_chgtyp = mtk_ext_chgdet,
 };
 
 static ssize_t shipping_mode_store(struct device *dev,

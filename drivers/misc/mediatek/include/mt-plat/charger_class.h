@@ -184,6 +184,7 @@ struct charger_ops {
 	int (*enable_hz)(struct charger_device *dev, bool en);
 
 	int (*enable_bleed_discharge)(struct charger_device *dev, bool en);
+	int (*get_ext_chgtyp)(struct charger_device *dev);
 };
 
 static inline void *charger_dev_get_drvdata(
@@ -369,6 +370,7 @@ extern int charger_dev_get_ctd_dischg_status(struct charger_device *dev,
 extern int charger_dev_set_suspend(struct charger_device *chg_dev, bool en);
 extern int charger_dev_enable_bleed_discharge(struct charger_device *dev,
 					      bool en);
+extern int charger_dev_get_ext_chgtyp(struct charger_device *charger_dev);
 
 /* For buck1 FPWM */
 extern int charger_dev_enable_hidden_mode(struct charger_device *dev, bool en);

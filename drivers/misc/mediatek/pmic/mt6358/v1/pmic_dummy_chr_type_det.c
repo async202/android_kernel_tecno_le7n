@@ -42,6 +42,8 @@
 #include <mach/upmu_hw.h>
 #include <mt-plat/mtk_boot.h>
 #include <mt-plat/charger_type.h>
+#include <mt-plat/charger_class.h>
+#include <mt-plat/mtk_boot_common.h>
 
 #define __SW_CHRDET_IN_PROBE_PHASE__
 
@@ -49,6 +51,9 @@ static enum charger_type g_chr_type;
 #ifdef __SW_CHRDET_IN_PROBE_PHASE__
 static struct work_struct chr_work;
 #endif
+
+static struct charger_device *primary_charger;
+static bool first_connect = true;
 
 static DEFINE_MUTEX(chrdet_lock);
 
@@ -100,37 +105,84 @@ static int chrdet_inform_psy_changed(enum charger_type chg_type,
 
 int hw_charging_get_charger_type(void)
 {
-	return STANDARD_HOST;
+	enum charger_type chr_type;
+	int timeout = 200;
+	int boot_mode = get_boot_mode();
+
+	pr_info("hw_bc11_init boot_mode=%d\n", boot_mode);
+
+	msleep(200);
+	if (boot_mode != RECOVERY_BOOT) {
+		if (first_connect == true) {
+			if (is_usb_rdy() == false) {
+				pr_info("CDP, block\n");
+				while (is_usb_rdy() == false && timeout > 0) {
+					msleep(100);
+					timeout--;
+				}
+				if (timeout == 0)
+					pr_info("CDP, timeout\n");
+				else
+					pr_info("CDP, free\n");
+			} else
+				pr_info("CDP, PASS\n");
+			first_connect = false;
+		}
+	}
+	if (!primary_charger)
+		primary_charger = get_charger_by_name("primary_chg");
+	if (!primary_charger) {
+		pr_notice("%s: get primary charger device failed\n", __func__);
+		return STANDARD_HOST;
+	}
+	chr_type = charger_dev_get_ext_chgtyp(primary_charger);
+	return chr_type;
 }
 
 /*****************************************************************************
  * Charger Detection
  ******************************************************************************/
-void __attribute__((weak)) mtk_pmic_enable_chr_type_det(bool en)
+void mtk_pmic_enable_chr_type_det(bool en)
 {
+	if (!mt_usb_is_device()) {
+		g_chr_type = CHARGER_UNKNOWN;
+		pr_info("charger type: UNKNOWN, Now is usb host mode. Skip detection\n");
+		return;
+	}
+
+	mutex_lock(&chrdet_lock);
+
+	if (en) {
+		if (is_meta_mode()) {
+			pr_info("charger type: force Standard USB Host in meta\n");
+			g_chr_type = STANDARD_HOST;
+			chrdet_inform_psy_changed(g_chr_type, 1);
+		} else {
+			pr_info("%s charger type: charger IN\n", __func__);
+			g_chr_type = hw_charging_get_charger_type();
+			chrdet_inform_psy_changed(g_chr_type, 1);
+		}
+	} else {
+		pr_info("%s charger type: charger OUT\n", __func__);
+		g_chr_type = CHARGER_UNKNOWN;
+		chrdet_inform_psy_changed(g_chr_type, 0);
+	}
+
+	mutex_unlock(&chrdet_lock);
 }
 
 void do_charger_detect(void)
 {
 	if (!mt_usb_is_device()) {
 		g_chr_type = CHARGER_UNKNOWN;
-		pr_debug("charger type: UNKNOWN, Now is usb host mode. Skip detection!!!\n");
+		pr_info("charger type: UNKNOWN, Now is usb host mode. Skip detection\n");
 		return;
 	}
 
-	mutex_lock(&chrdet_lock);
-
-	if (pmic_get_register_value(PMIC_RGS_CHRDET)) {
-		pr_info("charger type: charger IN\n");
-		g_chr_type = hw_charging_get_charger_type();
-		chrdet_inform_psy_changed(g_chr_type, 1);
-	} else {
-		pr_info("charger type: charger OUT\n");
-		g_chr_type = CHARGER_UNKNOWN;
-		chrdet_inform_psy_changed(g_chr_type, 0);
-	}
-
-	mutex_unlock(&chrdet_lock);
+	if (pmic_get_register_value(PMIC_RGS_CHRDET))
+		mtk_pmic_enable_chr_type_det(true);
+	else
+		mtk_pmic_enable_chr_type_det(false);
 }
 
 
@@ -184,6 +236,11 @@ static int __init pmic_chrdet_init(void)
 		pr_debug("%s: get power supply failed\n", __func__);
 		return -EINVAL;
 	}
+
+	primary_charger = get_charger_by_name("primary_chg");
+	if (!primary_charger)
+		pr_debug("%s: get primary charger device failed\n", __func__);
+	first_connect = true;
 
 #ifdef __SW_CHRDET_IN_PROBE_PHASE__
 	/* do charger detect here to prevent HW miss interrupt*/
