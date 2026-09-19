@@ -27,7 +27,6 @@ PCBA_CONFIG huaqin_pcba_config = PCBA_UNKNOW;
 
 //extern char *saved_command_line;
 extern int IMM_GetOneChannelValue(int dwChannel, int data[4], int *rawdata);
-static bool read_pcba_config(void);
 
 typedef struct {
 	int voltage_min;

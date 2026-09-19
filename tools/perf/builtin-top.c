@@ -74,7 +74,7 @@
 #include <linux/time64.h>
 #include <linux/types.h>
 
-#include "sane_ctype.h"
+#include <linux/ctype.h>
 
 static volatile int done;
 static volatile int resize;
@@ -652,7 +652,9 @@ repeat:
 	delay_msecs = top->delay_secs * MSEC_PER_SEC;
 	set_term_quiet_input(&save);
 	/* trash return*/
-	getc(stdin);
+	clearerr(stdin);
+	if (poll(&stdin_poll, 1, 0) > 0)
+		getc(stdin);
 
 	while (!done) {
 		perf_top__print_sym_table(top);

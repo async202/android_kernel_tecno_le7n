@@ -313,8 +313,6 @@ int dramc_dram_address_get(phys_addr_t phys_addr,
 
 	if ((ddr_type == TYPE_LPDDR4) || (ddr_type == TYPE_LPDDR4X))
 		phys_addr = phys_addr >> 1;
-	else if (ddr_type == TYPE_LPDDR3)
-		phys_addr = phys_addr >> 2;
 	else {
 		pr_info("[DRAMC] undefined DRAM type\n");
 		return -1;

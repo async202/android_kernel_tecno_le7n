@@ -55,7 +55,7 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 /* static struct thermal_cooling_device *cl_dev_6311= NULL;; */
 
 #endif
-static int mtkts6311_debug_log;
+static int mtkts6311_debug_log = 0;
 static int kernelmode;
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

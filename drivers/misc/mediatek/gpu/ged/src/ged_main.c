@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2016 MediaTek Inc.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -46,6 +45,10 @@
 #include "ged_kpi.h"
 #include "ged_ge.h"
 #include "ged_gpu_tuner.h"
+
+#ifdef GED_SKI_SUPPORT
+#include "ged_ski.h"
+#endif
 
 #define GED_DRIVER_DEVICE_NAME "ged"
 
@@ -426,6 +429,10 @@ static void ged_exit(void)
 	ghLogBuf_GPU = 0;
 #endif /* GED_BUFFER_LOG_DISABLE */
 
+#ifdef GED_SKI_SUPPORT
+	ged_ski_exit();
+#endif
+
 	ged_gpu_tuner_exit();
 
 	ged_kpi_system_exit();
@@ -517,6 +524,14 @@ static int ged_init(void)
 		GED_LOGE("ged: failed to init GPU Tuner!\n");
 		goto ERROR;
 	}
+
+#ifdef GED_SKI_SUPPORT
+	err = ged_ski_init();
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("ged: failed to init ski!\n");
+		goto ERROR;
+	}
+#endif
 
 #ifndef GED_BUFFER_LOG_DISABLE
 	ghLogBuf_GPU = ged_log_buf_alloc(512, 128 * 512,

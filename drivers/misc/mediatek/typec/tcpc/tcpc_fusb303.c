@@ -1857,7 +1857,7 @@ static void fusb303_attach(struct fusb303_chip *chip)
 		break;
 	case FUSB303_TYPE_INVALID:
 		fusb303_detach(chip);
-		dev_err(cdev, "%s: Invaild type[0x%02x]\n", __func__, type);
+		//dev_err(cdev, "%s: Invaild type[0x%02x]\n", __func__, type);
 		break;
 	default:
 		rc = fusb303_set_chip_state(chip,
@@ -2303,12 +2303,15 @@ int fusb303_get_mode(struct tcpc_device *tcpc, int *typec_mode)
 	case FUSB303_TYPE_DBG_ACC_SNK:
 		*typec_mode = 1;
 		break;
+	case FUSB303_TYPE_INVALID:
+		*typec_mode = 0;
+		break;
 	default:
 		*typec_mode = 0;
 		dev_err(cdev, "%s: Invaild type[0x%02x]\n", __func__, type);
 		break;
 	}
-	pr_err("dhx---fusb303 get typec mode type:%d, reg:%x\n", *typec_mode, type);
+	//pr_err("dhx---fusb303 get typec mode type:%d, reg:%x\n", *typec_mode, type);
 	return 0;
 
 }
@@ -2637,7 +2640,7 @@ static int fusb303_suspend(struct device *dev)
 	struct fusb303_chip *chip = i2c_get_clientdata(client);
 	struct device *cdev = &client->dev;
 
-	dev_err(cdev, "%s: enter\n", __func__);
+	dev_dbg(cdev, "%s: enter\n", __func__);
 
 	if (!chip) {
 		dev_err(cdev, "%s: No device is available!\n", __func__);
@@ -2653,7 +2656,7 @@ static int fusb303_resume(struct device *dev)
 	struct fusb303_chip *chip = i2c_get_clientdata(client);
 	struct device *cdev = &client->dev;
 
-	dev_err(cdev, "%s: enter\n", __func__);
+	dev_dbg(cdev, "%s: enter\n", __func__);
 
 	if (!chip) {
 		dev_err(cdev, "%s: No device is available!\n", __func__);

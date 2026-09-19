@@ -1180,13 +1180,13 @@ void mmdvfs_config_util_init(void)
 #if defined(SMI_SYL)
 		g_dvfs_handler = &dvfs_handler_mt6771;
 #if defined(USE_DDR_TYPE)
-		if (get_dram_type() == TYPE_LPDDR3) {
+		/* if (get_dram_type() == TYPE_LPDDR3) {
 			g_mmdvfs_adaptor = &mmdvfs_adaptor_obj_mt6771_lp3;
 			cam_sensor_threshold = 480000000;
 			disp_hrt_decrease_level1 = 150;
 			disp_hrt_decrease_default = 0;
 			MMDVFSMSG("g_mmdvfs_step_util init with lp3\n");
-		} else if (dram_steps_freq(0) == 3600) {
+		} else*/ if (dram_steps_freq(0) == 3600) {
 			g_mmdvfs_adaptor = &mmdvfs_adaptor_obj_mt6771_3600;
 			g_dvfs_handler = &dvfs_handler_mt6771_3600;
 			legacy_to_qos_step[MMDVFS_FINE_STEP_OPP1].qos_step = 0;

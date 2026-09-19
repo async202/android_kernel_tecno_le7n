@@ -348,28 +348,28 @@ static inline void task_seccomp(struct seq_file *m, struct task_struct *p)
 #ifdef CONFIG_SECCOMP
 	seq_put_decimal_ull(m, "\nSeccomp:\t", p->seccomp.mode);
 #endif
-	seq_printf(m, "\nSpeculation_Store_Bypass:\t");
+	seq_puts(m, "\nSpeculation_Store_Bypass:\t");
 	switch (arch_prctl_spec_ctrl_get(p, PR_SPEC_STORE_BYPASS)) {
 	case -EINVAL:
-		seq_printf(m, "unknown");
+		seq_puts(m, "unknown");
 		break;
 	case PR_SPEC_NOT_AFFECTED:
-		seq_printf(m, "not vulnerable");
+		seq_puts(m, "not vulnerable");
 		break;
 	case PR_SPEC_PRCTL | PR_SPEC_FORCE_DISABLE:
-		seq_printf(m, "thread force mitigated");
+		seq_puts(m, "thread force mitigated");
 		break;
 	case PR_SPEC_PRCTL | PR_SPEC_DISABLE:
-		seq_printf(m, "thread mitigated");
+		seq_puts(m, "thread mitigated");
 		break;
 	case PR_SPEC_PRCTL | PR_SPEC_ENABLE:
-		seq_printf(m, "thread vulnerable");
+		seq_puts(m, "thread vulnerable");
 		break;
 	case PR_SPEC_DISABLE:
-		seq_printf(m, "globally mitigated");
+		seq_puts(m, "globally mitigated");
 		break;
 	default:
-		seq_printf(m, "vulnerable");
+		seq_puts(m, "vulnerable");
 		break;
 	}
 	seq_putc(m, '\n');
@@ -500,7 +500,7 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 		}
 
 		sid = task_session_nr_ns(task, ns);
-		ppid = task_tgid_nr_ns(task->real_parent, ns);
+		ppid = task_ppid_nr_ns(task, ns);
 		pgid = task_pgrp_nr_ns(task, ns);
 
 		unlock_task_sighand(task, &flags);
@@ -619,28 +619,35 @@ int proc_tgid_stat(struct seq_file *m, struct pid_namespace *ns,
 int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
-	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
 	struct mm_struct *mm = get_task_mm(task);
 
 	if (mm) {
+		unsigned long size;
+		unsigned long resident = 0;
+		unsigned long shared = 0;
+		unsigned long text = 0;
+		unsigned long data = 0;
+
 		size = task_statm(mm, &shared, &text, &data, &resident);
 		mmput(mm);
-	}
-	/*
-	 * For quick read, open code by putting numbers directly
-	 * expected format is
-	 * seq_printf(m, "%lu %lu %lu %lu 0 %lu 0\n",
-	 *               size, resident, shared, text, data);
-	 */
-	seq_put_decimal_ull(m, "", size);
-	seq_put_decimal_ull(m, " ", resident);
-	seq_put_decimal_ull(m, " ", shared);
-	seq_put_decimal_ull(m, " ", text);
-	seq_put_decimal_ull(m, " ", 0);
-	seq_put_decimal_ull(m, " ", data);
-	seq_put_decimal_ull(m, " ", 0);
-	seq_putc(m, '\n');
 
+		/*
+		 * For quick read, open code by putting numbers directly
+		 * expected format is
+		 * seq_printf(m, "%lu %lu %lu %lu 0 %lu 0\n",
+		 *               size, resident, shared, text, data);
+		 */
+		seq_put_decimal_ull(m, "", size);
+		seq_put_decimal_ull(m, " ", resident);
+		seq_put_decimal_ull(m, " ", shared);
+		seq_put_decimal_ull(m, " ", text);
+		seq_put_decimal_ull(m, " ", 0);
+		seq_put_decimal_ull(m, " ", data);
+		seq_put_decimal_ull(m, " ", 0);
+		seq_putc(m, '\n');
+	} else {
+		seq_write(m, "0 0 0 0 0 0 0\n", 14);
+	}
 	return 0;
 }
 
@@ -755,16 +762,10 @@ static int children_seq_open(struct inode *inode, struct file *file)
 	return ret;
 }
 
-int children_seq_release(struct inode *inode, struct file *file)
-{
-	seq_release(inode, file);
-	return 0;
-}
-
 const struct file_operations proc_tid_children_operations = {
 	.open    = children_seq_open,
 	.read    = seq_read,
 	.llseek  = seq_lseek,
-	.release = children_seq_release,
+	.release = seq_release,
 };
 #endif /* CONFIG_PROC_CHILDREN */

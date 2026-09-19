@@ -40,11 +40,13 @@ int __attribute__((weak)) mtk_idle_cond_append_info(
 /* idle ratio */
 static bool idle_ratio_en;
 static unsigned long long idle_ratio_profile_start_time;
+#ifdef CONFIG_MTK_ENG_BUILD
 static unsigned long long idle_ratio_profile_duration;
 
 /* idle block information */
 static unsigned long long idle_cnt_dump_prev_time;
 static unsigned int idle_cnt_dump_criteria = 5000;          /* 5 sec */
+#endif
 
 /*External weak functions: implemented in mtk_cpufreq_api.c*/
 unsigned int __attribute__((weak))
@@ -59,7 +61,9 @@ struct mtk_idle_buf {
 	char *p_idx;
 };
 
+#ifdef CONFIG_MTK_ENG_BUILD
 static struct mtk_idle_buf idle_log;
+#endif
 static struct mtk_idle_buf idle_state_log;
 
 #define reset_idle_buf(idle) \
@@ -109,6 +113,7 @@ static DEFINE_SPINLOCK(idle_dump_cnt_spin_lock);
 
 void mtk_idle_dump_cnt_in_interval(void)
 {
+#ifdef CONFIG_MTK_ENG_BUILD
 	unsigned long long idle_cnt_dump_curr_time = 0;
 	unsigned long flags;
 	bool dump_log = false;
@@ -137,7 +142,7 @@ void mtk_idle_dump_cnt_in_interval(void)
 	mtk_idle_module_info_dump(MTK_IDLE_MODULE_INFO_COUNT
 				,  get_log(), IDLE_LOG_BUF_LEN);
 	/* dump log */
-	printk_deferred("[name:spm&]Power/swap %s\n", get_log());
+	pr_debug("[name:spm&]Power/swap %s\n", get_log());
 
 	/* dump idle ratio */
 	if (idle_ratio_en) {
@@ -150,10 +155,11 @@ void mtk_idle_dump_cnt_in_interval(void)
 		mtk_idle_module_info_dump(MTK_IDLE_MODULE_INFO_RATIO
 			, get_log_cur()
 			, IDLE_LOG_BUF_LEN - (get_log_cur() - get_log()));
-		printk_deferred("[name:spm&]Power/swap %s --- (ms)\n"
+		pr_debug("[name:spm&]Power/swap %s --- (ms)\n"
 			, get_log());
 		idle_ratio_profile_start_time = idle_get_current_time_ms();
 	}
+#endif
 }
 
 void mtk_idle_block_reason_report(struct MTK_IDLE_MODEL_CLERK const *clerk)
@@ -169,7 +175,7 @@ void mtk_idle_block_reason_report(struct MTK_IDLE_MODEL_CLERK const *clerk)
 			, "[%d] = (%lu), "
 			, i, clerk->status.cnt.enter[i]);
 
-	printk_deferred("[name:spm&]Power/swap %s\n"
+	pr_debug("[name:spm&]Power/swap %s\n"
 		, get_idle_buf(idle_state_log));
 
 	/* block category */
@@ -181,7 +187,7 @@ void mtk_idle_block_reason_report(struct MTK_IDLE_MODEL_CLERK const *clerk)
 					, "[%s] = %lu, "
 					, mtk_idle_block_reason_name(i)
 					, clerk->status.cnt.block[i]);
-	printk_deferred("[name:spm&]Power/swap %s\n"
+	pr_debug("[name:spm&]Power/swap %s\n"
 		, get_idle_buf(idle_state_log));
 
 	/* block mask */
@@ -191,7 +197,7 @@ void mtk_idle_block_reason_report(struct MTK_IDLE_MODEL_CLERK const *clerk)
 	idle_state_log.p_idx += mtk_idle_cond_append_info(true, clerk->type,
 		idle_state_log.p_idx,
 		IDLE_LOG_BUF_LEN - strlen(idle_state_log.buf));
-	printk_deferred("[name:spm&]Power/swap %s\n"
+	pr_debug("[name:spm&]Power/swap %s\n"
 		, get_idle_buf(idle_state_log));
 	spm_resource_req_block_dump();
 }
@@ -272,7 +278,7 @@ void mtk_idle_latency_profile_result(struct MTK_IDLE_MODEL_CLERK *clerk)
 		_LATENCY.total[2] += (ProfileLatency[2]);
 		_LATENCY.count++;
 	} else {
-		printk_deferred("[name:spm&]Power/latency_profile avg %s: %u, %u, %u\n"
+		pr_debug("[name:spm&]Power/latency_profile avg %s: %u, %u, %u\n"
 			, clerk->name
 			, (unsigned int)_LATENCY.total[0]/PROFILE_LATENCY_NUM
 			, (unsigned int)_LATENCY.total[1]/PROFILE_LATENCY_NUM
@@ -281,6 +287,6 @@ void mtk_idle_latency_profile_result(struct MTK_IDLE_MODEL_CLERK *clerk)
 		_LATENCY.total[0] = _LATENCY.total[1] = _LATENCY.total[2] = 0;
 	}
 
-	printk_deferred("[name:spm&]Power/latency_profile %s\n", plog);
+	pr_debug("[name:spm&]Power/latency_profile %s\n", plog);
 }
 

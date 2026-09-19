@@ -784,6 +784,7 @@ void SmileDetecteConfig(void)
 /*=======================================================================*/
 void FDVT_DUMPREG(void)
 {
+#ifdef CONFIG_MTK_ENG_BUILD
 	unsigned int u4RegValue = 0;
 	unsigned int u4Index = 0;
 
@@ -794,6 +795,7 @@ void FDVT_DUMPREG(void)
 		u4RegValue = ioread32((void *)(FDVT_ADDR + u4Index));
 		LOG_INF("+0x%x 0x%x\n", u4Index, u4RegValue);
 	}
+#endif
 }
 
 /*=======================================================================*/
@@ -1295,7 +1297,7 @@ static int FDVT_WaitIRQ(u32 *u4IRQMask)
 	}
 
 	*u4IRQMask = g_FDVTIRQ;
-	LOG_INF("[FDVT] Receive IRQ : 0x%x\n", g_FDVTIRQ);
+	LOG_DBG("[FDVT] Receive IRQ : 0x%x\n", g_FDVTIRQ);
 
 	/* check if user is interrupted by system signal */
 	if (timeout != 0 && !(g_FDVTIRQMSK & g_FDVTIRQ)) {

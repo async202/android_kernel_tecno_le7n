@@ -24,7 +24,6 @@
 #include <linux/of_address.h>
 #include <linux/suspend.h>
 #include <linux/platform_device.h>
-#include <linux/rtc.h>
 
 #include <mtk_cpuidle.h>	/* mtk_cpuidle_init */
 #include <mtk_sleep.h>	    /* slp_module_init */
@@ -40,7 +39,9 @@ DEFINE_SPINLOCK(__spm_lock);
 /* Note: implemented in mtk_spm_dram.c */
 int __attribute__ ((weak)) spm_get_spmfw_idx(void)
 {
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("NO %s !!!\n", __func__);
+#endif
 	pr_info("[SPM] NO %s !!!\n", __func__);
 	return 1;
 }
@@ -48,7 +49,9 @@ int __attribute__ ((weak)) spm_get_spmfw_idx(void)
 /* Note: implemented in mtk_spm_irq.c */
 int __attribute__ ((weak)) mtk_spm_irq_register(unsigned int spmirq0)
 {
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("NO %s !!!\n", __func__);
+#endif
 	pr_info("[SPM] NO %s !!!\n", __func__);
 	return 0;
 }
@@ -59,14 +62,18 @@ int __attribute__ ((weak)) mtk_cpuidle_init(void) { return -EOPNOTSUPP; }
 /* Note: implemented in mtk_spm_dram.c */
 void __attribute__((weak)) spm_do_dram_config_check(void)
 {
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("NO %s !!!\n", __func__);
+#endif
 	pr_info("[SPM] NO %s !!!\n", __func__);
 }
 
 /* Note: implemented in mtk_spm_fs.c */
 int __attribute__((weak)) spm_fs_init(void)
 {
+#ifdef CONFIG_MTK_AEE_FEATURE
 	aee_sram_printk("NO %s !!!\n", __func__);
+#endif
 	pr_info("[SPM] NO %s !!!\n", __func__);
 	return 0;
 }
@@ -184,81 +191,6 @@ static struct platform_driver spm_dev_drv = {
 	},
 };
 
-#if !defined(CONFIG_FPGA_EARLY_PORTING)
-#ifdef CONFIG_PM
-static int spm_pm_event(struct notifier_block *notifier, unsigned long pm_event,
-			void *unused)
-{
-	struct timespec ts;
-	struct rtc_time tm;
-
-	getnstimeofday(&ts);
-	rtc_time_to_tm(ts.tv_sec, &tm);
-
-#if 0 /* Avoid race condition between Suspend sync and Idle async IPI cmd */
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-	struct spm_data spm_d;
-	int ret;
-	unsigned long flags;
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-#endif
-
-	switch (pm_event) {
-	case PM_HIBERNATION_PREPARE:
-		return NOTIFY_DONE;
-	case PM_RESTORE_PREPARE:
-		return NOTIFY_DONE;
-	case PM_POST_HIBERNATION:
-		return NOTIFY_DONE;
-	case PM_SUSPEND_PREPARE:
-#if 0 /* Avoid race condition between Suspend sync and Idle async IPI cmd */
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-		spin_lock_irqsave(&__spm_lock, flags);
-		ret = spm_to_sspm_command(SPM_SUSPEND_PREPARE, &spm_d);
-		spin_unlock_irqrestore(&__spm_lock, flags);
-		if (ret < 0) {
-			printk_deferred("[name:spm&]#@# %s(%d) PM_SUSPEND_PREPARE return %d!!!\n",
-				__func__, __LINE__, ret);
-			return NOTIFY_BAD;
-		}
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-#endif
-		printk_deferred(
-		"[name:spm&][SPM] PM: suspend entry %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
-			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
-
-		return NOTIFY_DONE;
-	case PM_POST_SUSPEND:
-#if 0 /* Avoid race condition between Suspend sync and Idle async IPI cmd */
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-		spin_lock_irqsave(&__spm_lock, flags);
-		ret = spm_to_sspm_command(SPM_POST_SUSPEND, &spm_d);
-		spin_unlock_irqrestore(&__spm_lock, flags);
-		if (ret < 0) {
-			printk_deferred("[name:spm&]#@# %s(%d) PM_POST_SUSPEND return %d!!!\n",
-				__func__, __LINE__, ret);
-			return NOTIFY_BAD;
-		}
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-#endif
-		printk_deferred(
-		"[name:spm&][SPM] PM: suspend exit %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
-			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
-
-		return NOTIFY_DONE;
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block spm_pm_notifier_func = {
-	.notifier_call = spm_pm_event,
-	.priority = 0,
-};
-#endif /* CONFIG_PM */
-#endif /* CONFIG_FPGA_EARLY_PORTING */
-
 static const struct mtk_idle_sysfs_op spm_last_wakeup_src_fops = {
 	.fs_read = get_spm_last_wakeup_src,
 };
@@ -324,16 +256,6 @@ static int spm_module_init(void)
 			, &spm_spmfw_version_fops, &pParent2ND, NULL);
 	}
 
-
-#if !defined(CONFIG_FPGA_EARLY_PORTING)
-#ifdef CONFIG_PM
-	ret = register_pm_notifier(&spm_pm_notifier_func);
-	if (ret) {
-		pr_debug("Failed to register PM notifier.\n");
-		return ret;
-	}
-#endif /* CONFIG_PM */
-#endif /* CONFIG_FPGA_EARLY_PORTING */
 	SMC_CALL(ARGS, SPM_ARGS_SPMFW_IDX, spm_get_spmfw_idx(), 0);
 
 	return 0;

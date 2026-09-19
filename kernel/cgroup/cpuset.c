@@ -1530,7 +1530,9 @@ static void cpuset_cancel_attach(struct cgroup_taskset *tset)
 	cs = css_cs(css);
 
 	mutex_lock(&cpuset_mutex);
-	css_cs(css)->attach_in_progress--;
+	cs->attach_in_progress--;
+	if (!cs->attach_in_progress)
+		wake_up(&cpuset_attach_wq);
 	mutex_unlock(&cpuset_mutex);
 }
 
@@ -1554,6 +1556,7 @@ static void cpuset_attach(struct cgroup_taskset *tset)
 	cgroup_taskset_first(tset, &css);
 	cs = css_cs(css);
 
+	cpus_read_lock();
 	mutex_lock(&cpuset_mutex);
 
 	/* prepare for attach */
@@ -1609,6 +1612,7 @@ static void cpuset_attach(struct cgroup_taskset *tset)
 		wake_up(&cpuset_attach_wq);
 
 	mutex_unlock(&cpuset_mutex);
+	cpus_read_unlock();
 }
 
 /* The various types of files and directories in a cpuset file system */
@@ -2428,7 +2432,7 @@ void set_user_space_global_cpuset(struct cpumask *global_cpus, int cgroup_id)
 		struct cpuset *parent;
 
 		if (cs == &top_cpuset || !css_tryget_online(&cs->css) ||
-			(cgroup_id != 0 && cs->css.cgroup->id != cgroup_id))
+			(cgroup_id != 0 && cs->css.cgroup->kn->id != cgroup_id))
 			continue;
 
 		parent = parent_cs(cs);
@@ -2468,7 +2472,7 @@ void set_user_space_global_cpuset(struct cpumask *global_cpus, int cgroup_id)
 				cs->effective_cpus->bits[0]);
 		printk_deferred("%s, id:%d\n",
 				cs->css.cgroup->kn->name,
-				cs->css.cgroup->id);
+				cs->css.cgroup->kn->id);
 
 		/* use cs->effective_cpus to update cs cpumask */
 		update_tasks_cpumask(cs);
@@ -2516,7 +2520,7 @@ void unset_user_space_global_cpuset(int cgroup_id)
 		struct cpuset *parent;
 
 		if (cs == &top_cpuset || !css_tryget_online(&cs->css) ||
-			(cgroup_id != 0 && cs->css.cgroup->id != cgroup_id))
+			(cgroup_id != 0 && cs->css.cgroup->kn->id != cgroup_id))
 			continue;
 
 		parent = parent_cs(cs);
@@ -2550,7 +2554,7 @@ void unset_user_space_global_cpuset(int cgroup_id)
 		printk_deferred("0x%lx cgroup:%s, id:%d\n",
 				cs->effective_cpus->bits[0],
 				cs->css.cgroup->kn->name,
-				cs->css.cgroup->id);
+				cs->css.cgroup->kn->id);
 		pr_cont_cgroup_name(cs->css.cgroup);
 		printk_deferred("\n");
 
@@ -2600,8 +2604,11 @@ static struct notifier_block cpuset_track_online_nodes_nb = {
  */
 void __init cpuset_init_smp(void)
 {
-	cpumask_copy(top_cpuset.cpus_allowed, cpu_active_mask);
-	top_cpuset.mems_allowed = node_states[N_MEMORY];
+	/*
+	 * cpus_allowd/mems_allowed set to v2 values in the initial
+	 * cpuset_bind() call will be reset to v1 values in another
+	 * cpuset_bind() call when v1 cpuset is mounted.
+	 */
 	top_cpuset.old_mems_allowed = top_cpuset.mems_allowed;
 
 	cpumask_copy(top_cpuset.effective_cpus, cpu_active_mask);

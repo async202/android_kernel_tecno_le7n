@@ -902,7 +902,7 @@ void mt_power_off(void)
 	int ret;
 
 	pr_notice("%s\n", __func__);
-	dump_stack();
+	//dump_stack();
 
 	spin_lock_irqsave(&rtc_misc->lock, flags);
 

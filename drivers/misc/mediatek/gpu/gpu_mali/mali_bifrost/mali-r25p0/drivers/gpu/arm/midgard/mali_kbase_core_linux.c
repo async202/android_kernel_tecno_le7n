@@ -97,7 +97,7 @@
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/log2.h>
-
+#include <linux/pm_qos.h>
 #include <mali_kbase_config.h>
 
 
@@ -1504,7 +1504,7 @@ static int kbase_api_tlstream_stats(struct kbase_context *kctx,
 		return ret;                                            \
 	} while (0)
 
-static long kbase_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long __kbase_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct kbase_file *const kfile = filp->private_data;
 	struct kbase_context *kctx = NULL;
@@ -1783,6 +1783,21 @@ static long kbase_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	dev_warn(kbdev->dev, "Unknown ioctl 0x%x nr:%d", cmd, _IOC_NR(cmd));
 
 	return -ENOIOCTLCMD;
+}
+
+long kbase_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct pm_qos_request req = {
+		.type = PM_QOS_REQ_AFFINE_CORES,
+		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+	};
+	long ret;
+
+	pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
+	ret = __kbase_ioctl(filp, cmd, arg);
+	pm_qos_remove_request(&req);
+
+	return ret;
 }
 
 static ssize_t kbase_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
@@ -4288,6 +4303,36 @@ static struct attribute *kbase_scheduling_attrs[] = {
 	NULL
 };
 
+static ssize_t total_gpu_mem_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *const buf)
+{
+	struct kbase_device *kbdev;
+	kbdev = to_kbase_device(dev);
+	if (!kbdev)
+		return -ENODEV;
+
+	return sysfs_emit(buf, "%lu\n",
+		(unsigned long) kbdev->total_gpu_pages << PAGE_SHIFT);
+}
+static DEVICE_ATTR_RO(total_gpu_mem);
+
+static ssize_t dma_buf_gpu_mem_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *const buf)
+{
+	struct kbase_device *kbdev;
+	kbdev = to_kbase_device(dev);
+	if (!kbdev)
+		return -ENODEV;
+
+	return sysfs_emit(buf, "%lu\n",
+		(unsigned long) kbdev->dma_buf_pages << PAGE_SHIFT);
+}
+static DEVICE_ATTR_RO(dma_buf_gpu_mem);
+
 static struct attribute *kbase_attrs[] = {
 #ifdef CONFIG_MALI_DEBUG
 	&dev_attr_debug_command.attr,
@@ -4307,6 +4352,8 @@ static struct attribute *kbase_attrs[] = {
 	&dev_attr_lp_mem_pool_size.attr,
 	&dev_attr_lp_mem_pool_max_size.attr,
 	&dev_attr_js_ctx_scheduling_mode.attr,
+	&dev_attr_total_gpu_mem.attr,
+	&dev_attr_dma_buf_gpu_mem.attr,
 	NULL
 };
 
@@ -4342,6 +4389,9 @@ int kbase_sysfs_init(struct kbase_device *kbdev)
 		}
 	}
 
+	kbdev->proc_sysfs_node = kobject_create_and_add("kprcs",
+			&kbdev->dev->kobj);
+
 	return err;
 }
 
@@ -4349,6 +4399,8 @@ void kbase_sysfs_term(struct kbase_device *kbdev)
 {
 	sysfs_remove_group(&kbdev->dev->kobj, &kbase_scheduling_attr_group);
 	sysfs_remove_group(&kbdev->dev->kobj, &kbase_attr_group);
+	kobject_del(kbdev->proc_sysfs_node);
+	kobject_put(kbdev->proc_sysfs_node);
 	put_device(kbdev->dev);
 }
 

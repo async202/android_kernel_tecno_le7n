@@ -276,7 +276,7 @@ static void wusb3801_irq_work_handler(struct kthread_work *work)
 	if (int_sts & WUSB3801_INT_DETACH) {
 		#ifdef __TEST_CC_PATCH__
 		if (chip->cc_test_flag == 1) {
-			pr_err("%s: test_cc_patch not used int and return \n", __func__);
+			pr_debug("%s: test_cc_patch not used int and return \n", __func__);
 			tcpci_unlock_typec(tcpc);
 			return;
 		}

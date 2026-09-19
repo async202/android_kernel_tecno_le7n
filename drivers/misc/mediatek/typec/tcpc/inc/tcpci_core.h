@@ -38,7 +38,7 @@
 /* The switch of log message */
 #define TYPEC_INFO_ENABLE	1
 #define TYPEC_INFO2_ENABLE	1
-#define PE_EVENT_DBG_ENABLE	1
+#define PE_EVENT_DBG_ENABLE	0
 #define PE_STATE_INFO_ENABLE	1
 #define TCPC_INFO_ENABLE	1
 #define TCPC_TIMER_DBG_EN	0
@@ -55,14 +55,14 @@
 
 
 #define DP_INFO_ENABLE		1
-#define DP_DBG_ENABLE		1
+#define DP_DBG_ENABLE		0
 
 #define UVDM_INFO_ENABLE		1
-#define TCPM_DBG_ENABLE		1
+#define TCPM_DBG_ENABLE		0
 
 #ifdef CONFIG_USB_PD_ALT_MODE_RTDC
 #define DC_INFO_ENABLE			1
-#define DC_DBG_ENABLE			1
+#define DC_DBG_ENABLE			0
 #endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
 
 #define TCPC_ENABLE_ANYMSG	\

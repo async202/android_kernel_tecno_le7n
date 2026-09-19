@@ -551,6 +551,9 @@ void mt_gpufreq_enable_by_ptpod(void)
 	/* Turn off GPU PMIC Buck */
 	mt_gpufreq_voltage_enable_set(0);
 
+#if !defined(CONFIG_TARGET_PRODUCT_LANCELOTCOMMON) || \
+	!defined(CONFIG_TARGET_PRODUCT_MERLINCOMMON) || \
+	!defined(CONFIG_TARGET_PRODUCT_SHIVACOMMON)
 #if defined(CONFIG_ARM64) && \
 	defined(CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE_NAMES)
 	gpufreq_pr_info("@%s: flavor name: %s\n",
@@ -561,6 +564,7 @@ void mt_gpufreq_enable_by_ptpod(void)
 		gpufreq_pr_info("@%s: AGING flavor !!!\n", __func__);
 		g_enable_aging_test = 1;
 	}
+#endif
 #endif
 
 	gpufreq_pr_debug("@%s: DVFS is enabled by ptpod\n", __func__);
@@ -781,6 +785,12 @@ unsigned int mt_gpufreq_get_min_power(void)
 {
 	return (!g_power_table) ? 0
 	: g_power_table[g_segment_min_opp_idx].gpufreq_power;
+}
+
+/* API : get immediate gpu temperature */
+int mt_gpufreq_get_immed_gpu_temp(void)
+{
+	return get_immediate_gpu_wrap();
 }
 
 /* API : get static leakage power */
@@ -2445,10 +2455,10 @@ static void __mt_gpufreq_update_max_limited_idx(void)
 		g_max_limited_idx = limited_idx;
 		g_limiter = limiter;
 
-		gpufreq_pr_info("@%s: g_max_limited_idx = %d, g_limiter = %d\n",
+		/* gpufreq_pr_info("@%s: g_max_limited_idx = %d, g_limiter = %d\n",
 			__func__,
 			g_max_limited_idx,
-			g_limiter);
+			g_limiter); */
 	}
 }
 

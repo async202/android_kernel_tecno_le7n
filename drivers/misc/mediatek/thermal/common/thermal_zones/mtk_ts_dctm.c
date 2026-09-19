@@ -69,7 +69,7 @@ static DEFINE_SEMAPHORE(sem_mutex);
 
 static unsigned int interval = 1;	/* seconds, 0 : no auto polling */
 static struct thermal_zone_device *thz_dev;
-static int mtkts_dctm_debug_log;
+static int mtkts_dctm_debug_log = 0;
 static int kernelmode;
 static int num_trip = 1;
 static int trip_temp[10] = { 120000, 110000, 100000, 90000,

@@ -56,8 +56,8 @@
 #define dbgmsg(...)
 #endif
 #define msg(msg...) pr_info(PFX msg)
-#define warnmsg(msg...) pr_info(PFX msg)
-#define errmsg(msg...) pr_notice(PFX msg)
+#define warnmsg(msg...) pr_warn(PFX msg)
+#define errmsg(msg...) pr_err(PFX msg)
 
 #define WK_MAX_MSG_SIZE (128)
 #define MIN_KICK_INTERVAL	 1
@@ -94,7 +94,9 @@ struct task_struct *wk_tsk[16] = { 0 };	/* max cpu 16 */
 static unsigned int wk_tsk_bind[16] = { 0 };	/* max cpu 16 */
 static unsigned long long wk_tsk_bind_time[16] = { 0 };	/* max cpu 16 */
 static unsigned long long wk_tsk_kick_time[16] = { 0 };	/* max cpu 16 */
+#ifdef CONFIG_MTK_TICK_BROADCAST_AEE_DUMP
 static char wk_tsk_buf[128] = { 0 };
+#endif
 
 static unsigned long kick_bit;
 static unsigned long rtc_update;
@@ -347,6 +349,7 @@ void wk_start_kick_cpu(int cpu)
 	}
 }
 
+#ifdef CONFIG_MTK_TICK_BROADCAST_AEE_DUMP
 void dump_wdk_bind_info(void)
 {
 	int i = 0;
@@ -381,6 +384,7 @@ void dump_wdk_bind_info(void)
 	tick_broadcast_mtk_aee_dump();
 	timer_list_aee_dump(kick_bit);
 }
+#endif
 
 void kicker_cpu_bind(int cpu)
 {
@@ -511,11 +515,6 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	 *  avoid bulk of delayed printk happens here
 	 */
 	wk_tsk_kick_time[cpu] = sched_clock();
-	snprintf(msg_buf, WK_MAX_MSG_SIZE,
-	 "[wdk-c] cpu=%d,lbit=0x%x,cbit=0x%x,%d,%d,%lld,%lld,%lld,[%lld,%ld]\n",
-	 cpu, local_bit, wk_check_kick_bit(), lasthpg_cpu, lasthpg_act,
-	 lasthpg_t, lastsuspend_t, lastresume_t, wk_tsk_kick_time[cpu],
-	 curInterval);
 
 	if (local_bit == wk_check_kick_bit()) {
 		msg_buf[5] = 'k';

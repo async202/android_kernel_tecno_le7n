@@ -15,13 +15,20 @@ static const char *proc_self_get_link(struct dentry *dentry,
 	pid_t tgid = task_tgid_nr_ns(current, ns);
 	char *name;
 
+	/*
+	 * Not currently supported. Once we can inherit all of struct pid,
+	 * we can allow this.
+	 */
+	if (current->flags & PF_KTHREAD)
+		return ERR_PTR(-EOPNOTSUPP);
+
 	if (!tgid)
 		return ERR_PTR(-ENOENT);
-	/* 11 for max length of signed int in decimal + NULL term */
-	name = kmalloc(12, dentry ? GFP_KERNEL : GFP_ATOMIC);
+	/* max length of unsigned int in decimal + NULL term */
+	name = kmalloc(10 + 1, dentry ? GFP_KERNEL : GFP_ATOMIC);
 	if (unlikely(!name))
 		return dentry ? ERR_PTR(-ENOMEM) : ERR_PTR(-ECHILD);
-	sprintf(name, "%d", tgid);
+	sprintf(name, "%u", tgid);
 	set_delayed_call(done, kfree_link, name);
 	return name;
 }

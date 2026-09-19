@@ -636,16 +636,9 @@ int reset_scp(int reset)
 static int scp_pm_event(struct notifier_block *notifier
 			, unsigned long pm_event, void *unused)
 {
-	int retval;
 
 		switch (pm_event) {
 		case PM_POST_HIBERNATION:
-			pr_debug("[SCP] %s: reboot\n", __func__);
-			retval = reset_scp(1);
-			if (retval < 0) {
-				retval = -EINVAL;
-				pr_debug("[SCP] %s: reboot fail\n", __func__);
-			}
 			return NOTIFY_DONE;
 		}
 	return NOTIFY_OK;
@@ -1980,7 +1973,7 @@ static int __init scp_init(void)
 	/* scp logger initialise */
 	pr_debug("[SCP] logger init\n");
 	/*create wq for scp logger*/
-	scp_logger_workqueue = create_singlethread_workqueue("SCP_LOG_WQ");
+	scp_logger_workqueue = alloc_ordered_workqueue("SCP_LOG_WQ", WQ_MEM_RECLAIM | WQ_POWER_EFFICIENT);
 	if (scp_logger_init(scp_get_reserve_mem_virt(SCP_A_LOGGER_MEM_ID),
 			scp_get_reserve_mem_size(SCP_A_LOGGER_MEM_ID)) == -1) {
 		pr_err("[SCP] scp_logger_init_fail\n");

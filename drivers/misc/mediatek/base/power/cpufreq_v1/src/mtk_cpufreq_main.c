@@ -1383,12 +1383,7 @@ static struct freq_attr *_mt_cpufreq_attr[] = {
 };
 
 static struct cpufreq_driver _mt_cpufreq_driver = {
-#if defined(CONFIG_MTK_PLAT_MT6885_EMULATION) || defined(CONFIG_MACH_MT6893) \
-	|| defined(CONFIG_MACH_MT6833)
 	.flags = CPUFREQ_ASYNC_NOTIFICATION | CPUFREQ_HAVE_GOVERNOR_PER_POLICY,
-#else
-	.flags = CPUFREQ_ASYNC_NOTIFICATION,
-#endif
 	.verify = _mt_cpufreq_verify,
 	.target = _mt_cpufreq_target,
 	.init = _mt_cpufreq_init,
@@ -1782,6 +1777,9 @@ static struct platform_driver _mt_cpufreq_pdrv = {
 
 /* Module driver */
 extern unsigned long cpufreq_max_freq;
+#ifdef CONFIG_CPU_FREQ_MTK
+extern void cpufreq_mtk_set_table(int cpu, struct cpufreq_frequency_table *ftbl);
+#endif
 static int __init _mt_cpufreq_tbl_init(void)
 {
 	unsigned int lv = _mt_cpufreq_get_cpu_level();
@@ -1829,6 +1827,9 @@ static int __init _mt_cpufreq_tbl_init(void)
 			p->opp_tbl = opp_tbl_info->opp_tbl;
 			p->nr_opp_tbl = opp_tbl_info->size;
 			p->freq_tbl_for_cpufreq = table;
+#ifdef CONFIG_CPU_FREQ_MTK
+			cpufreq_mtk_set_table(p->cpu_id, table);
+#endif
 		}
 	}
 	return 0;

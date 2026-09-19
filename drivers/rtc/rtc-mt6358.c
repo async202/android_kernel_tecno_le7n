@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2018 MediaTek, Inc.
- * Copyright (C) 2021 XiaoMi, Inc.
  * Author: Wilma Wu <wilma.wu@mediatek.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -43,7 +42,6 @@
 #include <linux/cpumask.h>
 #include "../misc/mediatek/include/mt-plat/mtk_boot_common.h"
 #include "../misc/mediatek/include/mt-plat/mtk_reboot.h"
-#include <linux/debugfs.h>
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -122,16 +120,19 @@
 #define RTC_PWRON_DOM_MASK      (RTC_AL_DOM_MASK << RTC_PWRON_DOM_SHIFT)
 #define RTC_PWRON_MTH_MASK      (RTC_AL_MTH_MASK << RTC_PWRON_MTH_SHIFT)
 #define RTC_PWRON_YEA_MASK      (RTC_AL_YEA_MASK << RTC_PWRON_YEA_SHIFT)
-
+/* Common */
 #define RTC_BBPU_KEY			0x4300
 #define RTC_BBPU_CBUSY			BIT(6)
 #define RTC_BBPU_RELOAD			BIT(5)
+#define RTC_BBPU_PWREN			BIT(0)
+/* MT6357,MT6358 */
 #define RTC_BBPU_AUTO			BIT(3)
 #define RTC_BBPU_CLR			BIT(1)
-#define RTC_BBPU_PWREN			BIT(0)
+/* MT6359, MT6359p*/
 #define RTC_BBPU_AL_STA			BIT(7)
 #define RTC_BBPU_RESET_AL		BIT(3)
 #define RTC_BBPU_RESET_SPAR		BIT(2)
+
 
 #define RTC_AL_MASK_DOW			BIT(4)
 
@@ -146,6 +147,8 @@
 #define RTC_PDN1_PWRON_TIME		BIT(7)
 #define RTC_PDN2_PWRON_LOGO		BIT(15)
 #define RTC_PDN2_PWRON_ALARM	BIT(4)
+
+#define RTC_POFF_ALM_SET	_IOW('p', 0x15, struct rtc_time) /* Set alarm time  */
 
 
 static u16 rtc_alarm_reg[RTC_OFFSET_COUNT][3] = {
@@ -205,63 +208,6 @@ static int alarm1m15s;
 
 module_param(rtc_show_time, int, 0644);
 module_param(rtc_show_alarm, int, 0644);
-
-static int rtc_alarm_enabled = 1;
-
-static ssize_t mtk_rtc_debug_write(struct file *file,
-	const char __user *buf, size_t size, loff_t *ppos)
-{
-	char lbuf[128];
-	char option[16];
-	int setting;
-	ssize_t res;
-
-	if (*ppos != 0 || size >= sizeof(lbuf) || size == 0)
-		return -EINVAL;
-
-	res = simple_write_to_buffer(lbuf, sizeof(lbuf) - 1, ppos, buf, size);
-	if (res <= 0)
-		return -EFAULT;
-	lbuf[size] = '\0';
-
-	if (sscanf(lbuf, "%15s %d", option, &setting) != 2) {
-		pr_notice("Invalid para %s\n", lbuf);
-		return -EFAULT;
-	}
-
-	if (!strncmp(option, "alarm", strlen("alarm"))) {
-		pr_notice("alarm = %d\n", setting);
-		rtc_alarm_enabled = setting;
-		if (rtc_alarm_enabled)
-			enable_irq(mt_rtc->irq);
-		else
-			disable_irq_nosync(mt_rtc->irq);
-	}
-
-	return size;
-}
-
-static int mtk_rtc_debug_show(struct seq_file *s, void *unused)
-{
-	seq_printf(s, "rtc alarm %s\n",
-		rtc_alarm_enabled ? "enabled" : "disabled");
-
-	return 0;
-}
-
-static int mtk_rtc_debug_open(struct inode *inode,
-						struct file *file)
-{
-	return single_open(file, mtk_rtc_debug_show, NULL);
-}
-
-static const struct file_operations mtk_rtc_debug_ops = {
-	.open    = mtk_rtc_debug_open,
-	.read    = seq_read,
-	.write   = mtk_rtc_debug_write,
-	.llseek  = seq_lseek,
-	.release = single_release,
-};
 
 
 
@@ -356,6 +302,7 @@ static int mtk_rtc_read_time(struct rtc_time *tm)
 	u16 data[RTC_OFFSET_COUNT];
 	int ret;
 	u32 sec = 0;
+	unsigned long long timeout = sched_clock() + 500000000;
 
 	do {
 
@@ -373,7 +320,10 @@ static int mtk_rtc_read_time(struct rtc_time *tm)
 		ret = rtc_read(RTC_TC_SEC, &sec);
 		if (ret < 0)
 			goto exit;
-
+		if (sched_clock() > timeout) {
+			pr_notice("%s, time out\n", __func__);
+			break;
+		}
 	} while (sec < tm->tm_sec);
 
 	return ret;
@@ -745,7 +695,7 @@ exit:
 
 static void mtk_rtc_reset_bbpu_alarm_status(void)
 {
-	u32 bbpu;
+	u32 bbpu = RTC_BBPU_KEY | RTC_BBPU_PWREN;
 	int ret;
 
 
@@ -754,7 +704,15 @@ static void mtk_rtc_reset_bbpu_alarm_status(void)
 		return;
 	}
 
-	bbpu = RTC_BBPU_KEY | RTC_BBPU_PWREN | RTC_BBPU_RESET_AL;
+#if defined(CONFIG_MTK_PMIC_CHIP_MT6358) || \
+defined(CONFIG_MTK_PMIC_CHIP_MT6357)
+	bbpu |= RTC_BBPU_CLR;
+#endif
+#if defined(CONFIG_MTK_PMIC_CHIP_MT6359) || \
+defined(CONFIG_MTK_PMIC_CHIP_MT6359P)
+	bbpu |= RTC_BBPU_RESET_AL;
+#endif
+
 	rtc_write(RTC_BBPU, bbpu);
 	ret = rtc_write_trigger();
 	if (ret < 0)
@@ -1045,7 +1003,54 @@ exit:
 	return ret;
 }
 
+int mtk_set_power_on(struct device *dev, struct rtc_wkalrm *alm)
+{
+	int err = 0;
+	struct rtc_time tm;
+	time64_t now, scheduled;
+
+	err = rtc_valid_tm(&alm->time);
+	if (err != 0)
+		return err;
+	scheduled = rtc_tm_to_time64(&alm->time);
+
+	err = rtc_ops_read_time(dev, &tm);
+	if (err != 0)
+		return err;
+	now = rtc_tm_to_time64(&tm);
+
+	if (scheduled <= now)
+		alm->enabled = 4;
+	else
+		alm->enabled = 3;
+
+	rtc_ops_set_alarm(dev, alm);
+
+	return err;
+}
+
+static int mtk_rtc_ioctl(struct device *dev, unsigned int cmd, unsigned long arg)
+{
+	void __user *uarg = (void __user *) arg;
+	int err = 0;
+	struct rtc_wkalrm alm;
+
+	switch (cmd) {
+	case RTC_POFF_ALM_SET:
+		if (copy_from_user(&alm.time, uarg, sizeof(alm.time)))
+			return -EFAULT;
+		err = mtk_set_power_on(dev, &alm);
+		break;
+	default:
+		err = -EINVAL;
+		break;
+	}
+
+	return err;
+}
+
 static const struct rtc_class_ops rtc_ops = {
+	.ioctl     = mtk_rtc_ioctl,
 	.read_time = rtc_ops_read_time,
 	.set_time = rtc_ops_set_time,
 	.read_alarm = rtc_ops_read_alarm,
@@ -1081,8 +1086,9 @@ static int mtk_rtc_pdrv_probe(struct platform_device *pdev)
 	struct mt6358_rtc *rtc;
 	unsigned long flags;
 	int ret;
-	struct dentry *mtk_rtc_dir;
-	struct dentry *mtk_rtc_file;
+#if defined(CONFIG_MTK_RTC) && defined(CONFIG_MTK_ENG_BUILD)
+	struct platform_device *plt_dev;
+#endif
 
 	rtc = devm_kzalloc(&pdev->dev, sizeof(struct mt6358_rtc), GFP_KERNEL);
 	if (!rtc)
@@ -1118,6 +1124,18 @@ static int mtk_rtc_pdrv_probe(struct platform_device *pdev)
 	mtk_rtc_set_lp_irq();
 	spin_unlock_irqrestore(&rtc->lock, flags);
 
+	mt6358_rtc_suspend_lock =
+		wakeup_source_register(NULL, "mt6358-rtc suspend wakelock");
+
+#ifdef CONFIG_PM
+	if (register_pm_notifier(&rtc_pm_notifier_func))
+		pr_notice("rtc pm failed\n");
+	else
+		rtc_pm_notifier_registered = true;
+#endif /* CONFIG_PM */
+
+	INIT_WORK(&rtc->work, mtk_rtc_work_queue);
+
 	ret = request_threaded_irq(rtc->irq, NULL,
 				   mtk_rtc_irq_handler,
 				   IRQF_ONESHOT | IRQF_TRIGGER_HIGH,
@@ -1129,9 +1147,6 @@ static int mtk_rtc_pdrv_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(&pdev->dev, 1);
-
-	mt6358_rtc_suspend_lock =
-		wakeup_source_register(NULL, "mt6358-rtc suspend wakelock");
 
 	/* register rtc device (/dev/rtc0) */
 	rtc->rtc_dev = rtc_device_register(RTC_NAME,
@@ -1147,29 +1162,13 @@ static int mtk_rtc_pdrv_probe(struct platform_device *pdev)
 		pr_notice("%s: apply_lpsd_solution\n", __func__);
 	}
 
-	mtk_rtc_dir = debugfs_create_dir("mtk_rtc", NULL);
-	if (!mtk_rtc_dir) {
-		pr_err("create /sys/kernel/debug/mtk_rtc_dir failed\n");
-		//return -ENOMEM;
-	}
-
-	mtk_rtc_file = debugfs_create_file("mtk_rtc", 0644,
-				mtk_rtc_dir, NULL,
-				&mtk_rtc_debug_ops);
-	if (!mtk_rtc_file) {
-		pr_err("create /sys/kernel/debug/mtk_rtc/mtk_rtc failed\n");
-		//return -ENOMEM;
-	}
-
-#ifdef CONFIG_PM
-	if (register_pm_notifier(&rtc_pm_notifier_func))
-		pr_notice("rtc pm failed\n");
-	else
-		rtc_pm_notifier_registered = true;
-#endif /* CONFIG_PM */
-
-	INIT_WORK(&rtc->work, mtk_rtc_work_queue);
-
+#if defined(CONFIG_MTK_RTC) && defined(CONFIG_MTK_ENG_BUILD)
+	plt_dev = platform_device_register_data(&pdev->dev, "mtk_rtc_dbg",
+						-1, NULL, 0);
+	if (IS_ERR(plt_dev))
+		dev_notice(&pdev->dev,
+			"%s: failed to register mtk_rtc_dbg\n",	__func__);
+#endif
 	return 0;
 out_free_irq:
 	free_irq(rtc->irq, rtc->rtc_dev);

@@ -23,27 +23,23 @@
 
 static int get_vb_volt(int vcore_opp)
 {
-	int ret = 0;
 	int ptpod64 = ((get_devinfo_with_index(64) >> 9) & 0x3);
 
 	pr_info("%s: ptpod64: 0x%x\n", __func__, ptpod64);
-	switch (vcore_opp) {
-	case VCORE_OPP_0:
-	case VCORE_OPP_1:
-	case VCORE_OPP_3:
-		break;
-	case VCORE_OPP_2:
-		if (ptpod64 != 0)
-			ret = ptpod64 - 1;
-		break;
-	default:
-		break;
+	if (vcore_opp == VCORE_OPP_2 && ptpod64 != 0) {
+		return (ptpod64 - 1) * 25000;
+	} else {
+		return 0;
 	}
-	return ret * 25000;
 }
 
 static int is_aging_test(void)
 {
+#if defined(CONFIG_TARGET_PRODUCT_LANCELOTCOMMON) || \
+	defined(CONFIG_TARGET_PRODUCT_MERLINCOMMON) || \
+	defined(CONFIG_TARGET_PRODUCT_SHIVACOMMON)
+	return 0;
+#else
 	int ret = 0;
 
 #if defined(CONFIG_ARM64) && \
@@ -60,6 +56,7 @@ static int is_aging_test(void)
 #endif
 
 	return ret;
+#endif
 }
 
 
@@ -72,9 +69,13 @@ void dvfsrc_opp_level_mapping(void)
 	int dvfs_v_mode = 0;
 	int is_vcore_aging = is_aging_test();
 
+#if !defined(CONFIG_TARGET_PRODUCT_LANCELOTCOMMON) || \
+	!defined(CONFIG_TARGET_PRODUCT_MERLINCOMMON) || \
+	!defined(CONFIG_TARGET_PRODUCT_SHIVACOMMON)
 	if (!strncmp(CONFIG_ARCH_MTK_PROJECT,
 				"k68v1_64_bsp_ctig", 17))
 		is_vcore_ct = is_mini_sqc = 1;
+#endif
 
 	pr_info("flavor check: %s, is_vcore_ct: %d, is_mini_sqc: %d\n",
 			CONFIG_ARCH_MTK_PROJECT,
@@ -140,41 +141,6 @@ void dvfsrc_opp_level_mapping(void)
 		/* fall through*/
 	case SPMFW_LP4X_2CH_3600:
 	case SPMFW_LP4_2CH_3200:
-		set_vcore_opp(VCORE_DVFS_OPP_0, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_1, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_2, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_3, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_4, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_5, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_6, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_7, VCORE_OPP_0);
-		set_vcore_opp(VCORE_DVFS_OPP_8, VCORE_OPP_1);
-		set_vcore_opp(VCORE_DVFS_OPP_9, VCORE_OPP_1);
-		set_vcore_opp(VCORE_DVFS_OPP_10, VCORE_OPP_1);
-		set_vcore_opp(VCORE_DVFS_OPP_11, VCORE_OPP_1);
-		set_vcore_opp(VCORE_DVFS_OPP_12, VCORE_OPP_1);
-		set_vcore_opp(VCORE_DVFS_OPP_13, VCORE_OPP_2);
-		set_vcore_opp(VCORE_DVFS_OPP_14, VCORE_OPP_2);
-		set_vcore_opp(VCORE_DVFS_OPP_15, VCORE_OPP_3);
-
-		set_ddr_opp(VCORE_DVFS_OPP_0, DDR_OPP_0);
-		set_ddr_opp(VCORE_DVFS_OPP_1, DDR_OPP_0);
-		set_ddr_opp(VCORE_DVFS_OPP_2, DDR_OPP_0);
-		set_ddr_opp(VCORE_DVFS_OPP_3, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_4, DDR_OPP_0);
-		set_ddr_opp(VCORE_DVFS_OPP_5, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_6, DDR_OPP_0);
-		set_ddr_opp(VCORE_DVFS_OPP_7, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_8, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_9, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_10, DDR_OPP_2);
-		set_ddr_opp(VCORE_DVFS_OPP_11, DDR_OPP_1);
-		set_ddr_opp(VCORE_DVFS_OPP_12, DDR_OPP_2);
-		set_ddr_opp(VCORE_DVFS_OPP_13, DDR_OPP_2);
-		set_ddr_opp(VCORE_DVFS_OPP_14, DDR_OPP_2);
-		set_ddr_opp(VCORE_DVFS_OPP_15, DDR_OPP_2);
-		break;
-	case SPMFW_LP3_1CH_1866:
 		set_vcore_opp(VCORE_DVFS_OPP_0, VCORE_OPP_0);
 		set_vcore_opp(VCORE_DVFS_OPP_1, VCORE_OPP_0);
 		set_vcore_opp(VCORE_DVFS_OPP_2, VCORE_OPP_0);

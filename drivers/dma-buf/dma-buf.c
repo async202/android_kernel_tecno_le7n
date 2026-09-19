@@ -40,6 +40,13 @@
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
 
+static struct kmem_cache *kmem_attach_pool;
+
+void __init init_dma_buf_kmem_pool(void)
+{
+	kmem_attach_pool = KMEM_CACHE(dma_buf_attachment, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+}
+
 static inline int is_dma_buf_file(struct file *);
 
 struct dma_buf_list {
@@ -85,15 +92,28 @@ static void dma_buf_release(struct dentry *dentry)
 
 	dmabuf->ops->release(dmabuf);
 
-	mutex_lock(&db_list.lock);
-	list_del(&dmabuf->list_node);
-	mutex_unlock(&db_list.lock);
-
 	if (dmabuf->resv == (struct reservation_object *)&dmabuf[1])
 		reservation_object_fini(dmabuf->resv);
 
 	module_put(dmabuf->owner);
+	kfree(dmabuf->name);
 	kfree(dmabuf);
+}
+
+static int dma_buf_file_release(struct inode *inode, struct file *file)
+{
+	struct dma_buf *dmabuf;
+
+	if (!is_dma_buf_file(file))
+		return -EINVAL;
+
+	dmabuf = file->private_data;
+
+	mutex_lock(&db_list.lock);
+	list_del(&dmabuf->list_node);
+	mutex_unlock(&db_list.lock);
+
+	return 0;
 }
 
 static const struct dentry_operations dma_buf_dentry_ops = {
@@ -389,7 +409,8 @@ static long dma_buf_ioctl(struct file *file,
 
 		return ret;
 
-	case DMA_BUF_SET_NAME:
+	case DMA_BUF_SET_NAME_A:
+	case DMA_BUF_SET_NAME_B:
 		return dma_buf_set_name(dmabuf, (const char __user *)arg);
 
 	default:
@@ -412,6 +433,7 @@ static void dma_buf_show_fdinfo(struct seq_file *m, struct file *file)
 }
 
 static const struct file_operations dma_buf_fops = {
+	.release	= dma_buf_file_release,
 	.mmap		= dma_buf_mmap_internal,
 	.llseek		= dma_buf_llseek,
 	.poll		= dma_buf_poll,
@@ -697,8 +719,8 @@ struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
 	if (WARN_ON(!dmabuf || !dev))
 		return ERR_PTR(-EINVAL);
 
-	attach = kzalloc(sizeof(*attach), GFP_KERNEL);
-	if (!attach)
+	attach = kmem_cache_zalloc(kmem_attach_pool, GFP_KERNEL);
+	if (attach == NULL)
 		return ERR_PTR(-ENOMEM);
 
 	attach->dev = dev;
@@ -717,7 +739,7 @@ struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
 	return attach;
 
 err_attach:
-	kfree(attach);
+	kmem_cache_free(kmem_attach_pool, attach);
 	mutex_unlock(&dmabuf->lock);
 	return ERR_PTR(ret);
 }
@@ -742,7 +764,7 @@ void dma_buf_detach(struct dma_buf *dmabuf, struct dma_buf_attachment *attach)
 		dmabuf->ops->detach(dmabuf, attach);
 
 	mutex_unlock(&dmabuf->lock);
-	kfree(attach);
+	kmem_cache_free(kmem_attach_pool, attach);
 }
 EXPORT_SYMBOL_GPL(dma_buf_detach);
 

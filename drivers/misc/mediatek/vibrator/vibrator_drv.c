@@ -247,7 +247,7 @@ static int vib_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	vibr->vibr_queue = create_singlethread_workqueue(VIB_DEVICE);
+	vibr->vibr_queue = alloc_ordered_workqueue("mtk_vibrator", WQ_MEM_RECLAIM | WQ_POWER_EFFICIENT);
 	if (!vibr->vibr_queue) {
 		pr_err(VIB_TAG "unable to create workqueue\n");
 		return -ENODATA;

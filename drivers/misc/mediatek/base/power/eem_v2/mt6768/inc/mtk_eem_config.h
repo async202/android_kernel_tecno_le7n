@@ -19,7 +19,7 @@
 #define EN_ISR_LOG		(0)
 #define EEM_BANK_SOC		(0) /* use voltage bin, so disable it */
 #define EARLY_PORTING		(0) /* for detecting real vboot in eem_init01 */
-#define DUMP_DATA_TO_DE		(1)
+#define DUMP_DATA_TO_DE		(0)
 #define EEM_ENABLE		(1) /* enable; after pass HPT mini-SQC */
 #define EEM_FAKE_EFUSE		(1)
 /* FIX ME */
@@ -35,7 +35,7 @@
 #define ENABLE_VPU              (0)
 #define ENABLE_MDLA             (0)
 #endif
-#define ENABLE_INIT1_STRESS	(1)
+#define ENABLE_INIT1_STRESS	(0)
 
 #define EEM_OFFSET
 #define SET_PMIC_VOLT		(1)

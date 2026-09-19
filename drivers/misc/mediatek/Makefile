@@ -13,7 +13,6 @@
 
 #$(call all-subdir-src-or-makefile)
 export MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
-subdir-ccflags-y += -Werror
 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
@@ -32,7 +31,9 @@ obj-$(CONFIG_MTK_M4U)   += m4u/
 obj-$(CONFIG_MTK_PSEUDO_M4U)   += pseudo_m4u/
 obj-$(CONFIG_MTK_ICE_DEBUG) += ice_debug/
 obj-y += mmdvfs/
+ifneq ($(CONFIG_MTK_SYSTRACKER_DISABLE),y)
 obj-$(CONFIG_MTK_SYSTRACKER_V2)   += systracker/
+endif
 
 obj-$(CONFIG_MTK_IRRX) += irrx/
 

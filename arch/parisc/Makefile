@@ -17,7 +17,12 @@
 # Mike Shaver, Helge Deller and Martin K. Petersen
 #
 
+ifdef CONFIG_PARISC_SELF_EXTRACT
+boot := arch/parisc/boot
+KBUILD_IMAGE := $(boot)/bzImage
+else
 KBUILD_IMAGE := vmlinuz
+endif
 
 KBUILD_DEFCONFIG := default_defconfig
 
@@ -28,7 +33,7 @@ export LIBGCC
 
 ifdef CONFIG_64BIT
 UTS_MACHINE	:= parisc64
-CHECKFLAGS	+= -D__LP64__=1 -m64
+CHECKFLAGS	+= -D__LP64__=1
 CC_ARCHES	= hppa64
 LD_BFD		:= elf64-hppa-linux
 else # 32-bit

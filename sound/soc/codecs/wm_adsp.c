@@ -10,7 +10,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG
 //#define WM_ADSP_DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -1445,7 +1444,7 @@ static int wm_coeff_write_acked_control(struct wm_coeff_ctl *ctl,
 		}
 	}
 
-	adsp_warn(dsp, "Acked control @0x%x alg:0x%x %s:0x%x timed out\n",
+	adsp_dbg(dsp, "Acked control @0x%x alg:0x%x %s:0x%x timed out\n",
 		  reg, ctl->alg_region.alg,
 		  wm_adsp_mem_region_name(ctl->alg_region.type),
 		  ctl->offset);
@@ -1952,7 +1951,7 @@ static int wm_adsp_create_control(struct wm_adsp *dsp,
 	ctl_work = kzalloc(sizeof(*ctl_work), GFP_KERNEL);
 	if (!ctl_work) {
 		ret = -ENOMEM;
-		goto err_ctl_cache;
+		goto err_list_del;
 	}
 
 	ctl_work->dsp = dsp;
@@ -1962,7 +1961,8 @@ static int wm_adsp_create_control(struct wm_adsp *dsp,
 
 	return 0;
 
-err_ctl_cache:
+err_list_del:
+	list_del(&ctl->list);
 	kfree(ctl->cache);
 err_ctl_name:
 	kfree(ctl->name);
@@ -2592,7 +2592,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 	}
 
 	if (pos > firmware->size)
-		adsp_warn(dsp, "%s.%d: %zu bytes at end of file\n",
+		adsp_dbg(dsp, "%s.%d: %zu bytes at end of file\n",
 			  file, regions, pos - firmware->size);
 
 	wm_adsp_debugfs_save_wmfwname(dsp, file);
@@ -3424,7 +3424,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 		adsp_err(dsp, "Failed to complete async write: %d\n", ret);
 
 	if (pos > firmware->size)
-		adsp_warn(dsp, "%s.%d: %zu bytes at end of file\n",
+		adsp_dbg(dsp, "%s.%d: %zu bytes at end of file\n",
 			  file, blocks, pos - firmware->size);
 
 	wm_adsp_debugfs_save_binname(dsp, file);
@@ -4439,18 +4439,18 @@ static int wm_halo_apply_calibration(struct snd_soc_dapm_widget *w)
 
 	switch (dsp->fw) {
 	case WM_ADSP_FW_CALIB:
-		adsp_warn(dsp, "Set ambient %d, only for Z Diagnostic\n", dsp->ambient);
+		adsp_dbg(dsp, "Set ambient %d, only for Z Diagnostic\n", dsp->ambient);
 			wm_adsp_k_ctl_put(dsp, "DSP1 Diag Z cd CAL_AMBIENT", dsp->ambient);
 			wm_adsp_k_ctl_get(dsp, "DSP1 Diag Z cd CAL_AMBIENT");
 		break;
 	case WM_ADSP_FW_DIAG:
 		//excute no matter whether dsp->component->name_prefix or not
-		adsp_warn(dsp, "Set ambient %d, only for Diagnostic\n", dsp->ambient);
+		adsp_dbg(dsp, "Set ambient %d, only for Diagnostic\n", dsp->ambient);
 		wm_adsp_k_ctl_put(dsp, "DSP1 Diag cd CAL_AMBIENT", dsp->ambient);
 		wm_adsp_k_ctl_get(dsp, "DSP1 Diag cd CAL_AMBIENT");
 		break;
 	case WM_ADSP_FW_SPK_PROT:
-		adsp_warn(dsp, "%s: Write CAL_R = %d \n", __func__, dsp->cal_z);
+		adsp_dbg(dsp, "%s: Write CAL_R = %d \n", __func__, dsp->cal_z);
 		wm_adsp_k_ctl_put(dsp, "DSP1 Protection cd CAL_R", dsp->cal_z);
 		wm_adsp_k_ctl_put(dsp, "DSP1 Protection cd CAL_STATUS", dsp->cal_status);
 		wm_adsp_k_ctl_put(dsp, "DSP1 Protection cd CAL_CHECKSUM", dsp->cal_chksum);
@@ -4459,7 +4459,7 @@ static int wm_halo_apply_calibration(struct snd_soc_dapm_widget *w)
 		wm_adsp_k_ctl_get(dsp, "DSP1 Protection cd CAL_CHECKSUM");
 		break;
 	default:
-		adsp_warn(dsp, "Do thing'\n");
+		adsp_dbg(dsp, "Do thing'\n");
 		break;
 	}
 
@@ -5716,14 +5716,14 @@ static void wm_halo_dump_fault_info(struct wm_adsp *dsp, const char *region,
 
 	switch (src) {
 	case 0:
-		adsp_warn(dsp, "%s: SRC=HALO\n", region);
+		adsp_dbg(dsp, "%s: SRC=HALO\n", region);
 		break;
 	default:
-		adsp_warn(dsp, "%s: SRC=Requestor%u\n", region, src);
+		adsp_dbg(dsp, "%s: SRC=Requestor%u\n", region, src);
 		break;
 	}
 
-	adsp_warn(dsp, "%s: %s %s %s %s %s %s\n",
+	adsp_dbg(dsp, "%s: %s %s %s %s %s %s\n",
 		  region,
 		  (type & HALO_MPU_VIO_SRAM) ? "SRAM" : "",
 		  (type & HALO_MPU_VIO_REG) ? "REG" : "",

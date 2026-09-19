@@ -1888,7 +1888,7 @@ static int mtk_cooling_wrapper_get_available
 	if (ops->get_available)
 		ret = ops->get_available(cdev, available);
 	else
-		snprintf(available, 1, "\n");
+		snprintf(available, 2, "\n");
 
 	THRML_LOG("[.get_available] cdev_type:%s available:%s\n",
 						cdev->type, available);
@@ -2087,7 +2087,7 @@ int mtk_thermal_zone_bind_trigger_trip(
 struct thermal_zone_device *tz, int trip, int mode)
 {
 	THRML_LOG("%s trip %d\n", __func__, trip);
-	schedule_delayed_work(&(tz->poll_queue), 0);
+	queue_delayed_work(system_power_efficient_wq, &(tz->poll_queue), 0);
 	return 0;
 }
 EXPORT_SYMBOL(mtk_thermal_zone_bind_trigger_trip);

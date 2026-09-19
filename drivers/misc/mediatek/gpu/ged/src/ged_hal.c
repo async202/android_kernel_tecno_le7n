@@ -129,7 +129,8 @@ static int ged_dvfs_opp_cost_seq_show(struct seq_file *psSeqFile,
 	if (pvData != NULL) {
 		int i, j;
 		int cur_idx;
-		unsigned int ui32FqCount, ui32TotalTrans;
+		unsigned int ui32FqCount = 0;
+		unsigned int ui32TotalTrans;
 		uint64_t curTS_us;
 		struct GED_DVFS_OPP_STAT *report;
 

@@ -147,8 +147,8 @@ static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 	page = ion_page_pool_alloc(pool);
 
 	if (!page) {
-		IONMSG("[ion_dbg] alloc_pages order=%lu cache=%d\n",
-		       order, cached);
+		/* IONMSG("[ion_dbg] alloc_pages order=%lu cache=%d\n",
+		       order, cached); */
 		alloc_large_fail_ts = sched_clock();
 		return NULL;
 	}
@@ -293,53 +293,6 @@ int ion_get_domain_id(int from_kernel, int *port)
 
 static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 			    ion_phys_addr_t *addr, size_t *len);
-
-static int ion_mm_heap_init_domain(struct ion_mm_buffer_info *buffer_info,
-				   unsigned int domain)
-{
-#if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
-	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
-	int i;
-	unsigned int start = 0, end = 0;
-	struct sg_table *table = buffer_info->table_orig;
-	int ret = 0;
-
-	if (domain == DOMAIN_NUM) {
-		start = 0;
-		end = DOMAIN_NUM;
-	} else if (domain < DOMAIN_NUM) {
-		start = domain;
-		end = domain + 1;
-	} else {
-		IONMSG("%s invalid domain:%u.\n",
-		       __func__, domain);
-		return -3;
-	}
-
-	for (i = start; i < end; i++) {
-		ret = sg_alloc_table(&buffer_info->table[i],
-				     table->nents, GFP_KERNEL);
-		if (ret) {
-			IONMSG("%s sg alloc table failed,nents=%d, ret=%d.\n",
-			       __func__, table->nents, ret);
-			return -1;
-		}
-		ret = clone_sg_table(table,
-				     &buffer_info->table[i]);
-		if (ret) {
-			IONMSG(
-			       "%s, %d, err clone sg table, src n=%d, domain%d dest n=%d\n",
-			       __func__, __LINE__, i,
-			       table->nents,
-			       buffer_info->table[i].nents);
-			sg_free_table(&buffer_info->table[i]);
-			return -2;
-		}
-	}
-#endif
-
-	return 0;
-}
 
 static int ion_mm_heap_allocate(struct ion_heap *heap,
 				struct ion_buffer *buffer, unsigned long size,
@@ -918,14 +871,6 @@ static int ion_mm_heap_phys(struct ion_heap *heap, struct ion_buffer *buffer,
 	if ((buffer_info->MVA[domain_idx] == 0 && port_info.flags == 0) ||
 	    (buffer_info->FIXED_MVA[domain_idx] == 0 &&
 	    port_info.flags > 0)) {
-#if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
-	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
-		ret = ion_mm_heap_init_domain(buffer_info, domain_idx);
-		if (ret)
-			goto out;
-		buffer->sg_table = &buffer_info->table[domain_idx];
-#endif
-
 		if (port_info.flags == 0 && buffer_info->module_id == -1) {
 #if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
 	(CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
@@ -2231,8 +2176,6 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 		}
 
 		if ((int)buffer->heap->type == ION_HEAP_TYPE_MULTIMEDIA) {
-			struct ion_mm_buffer_info *buffer_info =
-			    buffer->priv_virt;
 			enum ION_MM_CMDS mm_cmd = param.mm_cmd;
 			ion_phys_addr_t phy_addr;
 

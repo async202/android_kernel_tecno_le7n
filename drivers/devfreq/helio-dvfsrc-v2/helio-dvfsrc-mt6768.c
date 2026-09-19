@@ -74,48 +74,6 @@ static struct reg_config dvfsrc_init_configs[][128] = {
 
 		{ -1, 0 },
 	},
-	/* SPMFW_LP3_1CH_1866 */
-	{
-		{ DVFSRC_EMI_REQUEST,		0x00240009 },
-		{ DVFSRC_EMI_REQUEST3,		0x09000000 },
-		{ DVFSRC_EMI_HRT,		0x00000020 },
-		{ DVFSRC_EMI_QOS0,		0x00000026 },
-		{ DVFSRC_EMI_QOS1,		0x00000033 },
-		{ DVFSRC_EMI_MD2SPM0,		0x0000003F },
-		{ DVFSRC_EMI_MD2SPM1,		0x00000000 },
-		{ DVFSRC_EMI_MD2SPM2,		0x000080C0 },
-		{ DVFSRC_EMI_MD2SPM0_T,		0x00000007 },
-		{ DVFSRC_EMI_MD2SPM1_T,		0x00000038 },
-		{ DVFSRC_EMI_MD2SPM2_T,		0x000080C0 },
-
-		{ DVFSRC_VCORE_HRT,		0x00000020 },
-
-		{ DVFSRC_MD_SW_CONTROL,		0x20000000 },
-
-		{ DVFSRC_TIMEOUT_NEXTREQ,	0x00000014 },
-		{ DVFSRC_INT_EN,		0x00000003 },
-
-		{ DVFSRC_LEVEL_LABEL_0_1,	0x00010000 },
-		{ DVFSRC_LEVEL_LABEL_2_3,	0x00020101 },
-		{ DVFSRC_LEVEL_LABEL_4_5,	0x01020012 },
-		{ DVFSRC_LEVEL_LABEL_6_7,	0x02120112 },
-		{ DVFSRC_LEVEL_LABEL_8_9,	0x00230013 },
-		{ DVFSRC_LEVEL_LABEL_10_11,	0x01230113 },
-		{ DVFSRC_LEVEL_LABEL_12_13,	0x02230213 },
-		{ DVFSRC_LEVEL_LABEL_14_15,	0x03230323 },
-
-		{ DVFSRC_FORCE,			0x40000000 },
-		{ DVFSRC_RSRV_1,		0x0000000C },
-
-		{ DVFSRC_QOS_EN,		0x0000407F },
-
-		{ DVFSRC_BASIC_CONTROL,		0x0000407B },
-
-		{ DVFSRC_BASIC_CONTROL,		0x0000017B },
-		{ DVFSRC_FORCE,			0x00000000 },
-
-		{ -1, 0 },
-	},
 	/* NULL */
 	{
 		{ -1, 0 },
@@ -128,12 +86,8 @@ struct reg_config *dvfsrc_get_init_conf(void)
 
 	if (spmfw_idx < 0)
 		spmfw_idx = ARRAY_SIZE(dvfsrc_init_configs) - 1;
-
-	if (spmfw_idx == SPMFW_LP3_1CH_1866)
-		spmfw_idx = 1;
 	else
 		spmfw_idx = 0;
-	pr_info("dvfsrc init config index %d\n", spmfw_idx);
 
 	return dvfsrc_init_configs[spmfw_idx];
 }
@@ -143,15 +97,6 @@ void dvfsrc_update_md_scenario(bool blank)
 	switch (spm_get_spmfw_idx()) {
 	case SPMFW_LP4X_2CH_3600:
 	case SPMFW_LP4_2CH_3200:
-		if (blank) {
-			dvfsrc_write(DVFSRC_EMI_MD2SPM0_T, 0x0000003F);
-			dvfsrc_write(DVFSRC_EMI_MD2SPM1_T, 0x00000000);
-		} else {
-			dvfsrc_write(DVFSRC_EMI_MD2SPM0_T, 0x00000007);
-			dvfsrc_write(DVFSRC_EMI_MD2SPM1_T, 0x00000038);
-		}
-		break;
-	case SPMFW_LP3_1CH_1866:
 		if (blank) {
 			dvfsrc_write(DVFSRC_EMI_MD2SPM0_T, 0x0000003F);
 			dvfsrc_write(DVFSRC_EMI_MD2SPM1_T, 0x00000000);
@@ -193,9 +138,14 @@ static int dvfsrc_fb_notifier_call(struct notifier_block *self,
 static struct notifier_block dvfsrc_fb_notifier = {
 	.notifier_call = dvfsrc_fb_notifier_call,
 };
-#if 1
+
 static int is_bypass_flavor(void)
 {
+#if defined(CONFIG_TARGET_PRODUCT_LANCELOTCOMMON) || \
+	defined(CONFIG_TARGET_PRODUCT_MERLINCOMMON) || \
+	defined(CONFIG_TARGET_PRODUCT_SHIVACOMMON)
+	return 0;
+#else
 	int r = 0;
 #if defined(CONFIG_ARM64) && \
 		defined(CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE_NAMES)
@@ -208,12 +158,12 @@ static int is_bypass_flavor(void)
 		CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE_NAMES, r);
 #endif
 	return r;
-}
 #endif
+}
+
 static int can_dvfsrc_enable(void)
 {
 	int enable = 0;
-#if 1
 
 	if (is_bypass_flavor()) {
 		enable = 0;
@@ -222,7 +172,6 @@ static int can_dvfsrc_enable(void)
 		enable = 1;
 		pr_info("VCORE DVFS enable default\n");
 	}
-#endif
 	return enable;
 }
 
@@ -633,9 +582,6 @@ void dvfsrc_enable_dvfs_freq_hopping(int gps_on)
 	static struct pm_qos_request gps_ddr_req;
 
 	if (!is_dvfsrc_enabled())
-		return;
-
-	if (spm_get_spmfw_idx() == SPMFW_LP3_1CH_1866)
 		return;
 
 	if (spm_get_spmfw_idx() == SPMFW_LP4X_2CH_3600)

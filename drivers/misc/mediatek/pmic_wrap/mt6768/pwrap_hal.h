@@ -20,7 +20,7 @@
 #define PMIC_WRAP_SCP            0
 #define PMIC_WRAP_CTP            0
 
-#define PMIC_WRAP_DEBUG
+#define PMIC_WRAP_DEBUG 0
 #define PMIC_WRAP_SUPPORT
 /****** For BringUp. if BringUp doesn't had PMIC, need open this ***********/
 #if (PMIC_WRAP_PRELOADER)

@@ -46,6 +46,7 @@ config ARCH_BCM_IPROC
 config ARCH_BERLIN
 	bool "Marvell Berlin SoC Family"
 	select DW_APB_ICTL
+	select DW_APB_TIMER_OF
 	select GPIOLIB
 	select PINCTRL
 	help
@@ -121,7 +122,6 @@ config MACH_MT6785
 	select EXT4_FS
 	select EXT4_FS_SECURITY
 	select EXT4_ENCRYPTION
-	select SDCARD_FS
 	select OVERLAY_FS
 	select CPU_IDLE
 	select MTK_BASE_POWER
@@ -134,7 +134,6 @@ config MACH_MT6785
 	select MTK_LASTBUS_INTERFACE
 	select MTK_DRAMC
 	select MTK_EMI
-	select MTK_PID_MAP
 	select MTK_PLAT_SRAM_FLAG
 	select MTK_DEBUG_LATCH
 	select MTK_DFD_INTERNAL_DUMP
@@ -204,7 +203,6 @@ config MACH_MT6771
 	select ARM_AMBA
 	select CPU_V7
 	select HAVE_SMP
-	select MTK_PID_MAP
 	select MTK_IO_BOOST
 	select NEED_MACH_MEMORY_H
 	select IRQ_DOMAIN
@@ -271,21 +269,12 @@ config MACH_MT6768
 	select CPU_IDLE
 	select MTK_BASE_POWER
 	select MTK_GIC_V3_EXT
-	select MTK_PID_MAP
 	select MTK_SYSIRQ
-	select MTK_DEBUG_LATCH
-	select MTK_PLAT_SRAM_FLAG
-	select MTK_DFD_INTERNAL_DUMP
 	select MTK_EMI
 	select MTK_DRAMC
 	select ARM64_CRYPTO
 	select CRYPTO_SHA2_ARM64_CE
 	select CRYPTO_AES_ARM64_CE_BLK
-	select SDCARD_FS
-	select MTK_SYSTRACKER_V2
-	select MTK_CACHE_PARITY_CHECK
-	select MTK_LASTBUS_INTERFACE
-	select MTK_DEBUG_LATCH
 	select MTK_ES_REG
 	select MTK_CQDMA
 	select MTK_GIC_TARGET_ALL
@@ -481,7 +470,6 @@ config MACH_MT6885
 	select MTK_PLAT_SRAM_FLAG
 	select MTK_DEBUG_LATCH
 	select MTK_DFD_INTERNAL_DUMP
-	select MTK_PID_MAP
 	select MTK_CACHE_PARITY_CHECK
 	select HW_RANDOM
 	select HW_RANDOM_MT67XX
@@ -509,7 +497,6 @@ config MACH_MT6873
 	select MTK_LOW_POWER_MODULE
 	select MTK_LPM_MT6873
 	select MTK_SWPM if !FPGA_EARLY_PORTING
-	select MTK_PID_MAP
 	select GENERIC_SCHED_CLOCK
 	select ARMV7_COMPAT
 	select ARMV7_COMPAT_CPUINFO
@@ -749,7 +736,6 @@ config MACH_MT6893
 	select MTK_PLAT_SRAM_FLAG
 	select MTK_DEBUG_LATCH
 	select MTK_DFD_INTERNAL_DUMP
-	select MTK_PID_MAP
 	select MTK_CACHE_PARITY_CHECK
 	select HW_RANDOM
 	select HW_RANDOM_MT67XX

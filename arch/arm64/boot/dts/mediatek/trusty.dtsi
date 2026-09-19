@@ -37,9 +37,11 @@
 			compatible = "android,trusty-virtio-v1";
 		};
 
+/*
 		trusty-gz-log {
 			compatible = "android,trusty-gz-log-v1";
 		};
+*/
 	};
 
 	nebula {
@@ -59,8 +61,10 @@
 			ppi-interrupt-parent = <&gic>;
 		};
 
+/*
 		nebula-gz-log {
 			compatible = "android,nebula-gz-log-v1";
 		};
+*/
 	};
 };

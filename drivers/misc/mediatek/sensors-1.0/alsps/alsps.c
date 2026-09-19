@@ -104,7 +104,7 @@ int als_flush_report(void)
 	return err;
 }
 
-int rgbw_data_report_t(int *value, int64_t time_stamp)
+int rgbw_data_report_t(int value[4], int64_t time_stamp)
 {
 	int err = 0;
 	struct alsps_context *cxt = alsps_context_obj;
@@ -122,7 +122,7 @@ int rgbw_data_report_t(int *value, int64_t time_stamp)
 	err = sensor_input_event(cxt->als_mdev.minor, &event);
 	return err;
 }
-int rgbw_data_report(int *value)
+int rgbw_data_report(int value[4])
 {
 	return rgbw_data_report_t(value, 0);
 }
@@ -147,7 +147,6 @@ int ps_data_report_t(int value, int status, int64_t time_stamp)
 
 	memset(&event, 0, sizeof(struct sensor_event));
 
-	pr_notice("[ALS/PS]%s! %d, %d\n", __func__, value, status);
 	event.flush_action = DATA_ACTION;
 	event.time_stamp = time_stamp;
 	event.word[0] = value + 1;
@@ -1007,7 +1006,6 @@ int ps_report_interrupt_data(int value)
 	struct alsps_context *cxt = NULL;
 	/* int err =0; */
 	cxt = alsps_context_obj;
-	pr_notice("[ALS/PS] [%s]:value=%d\n", __func__, value);
 	if (cxt->is_get_valid_ps_data_after_enable == false) {
 		if (value != ALSPS_INVALID_VALUE) {
 			cxt->is_get_valid_ps_data_after_enable = true;

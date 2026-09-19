@@ -12,7 +12,6 @@
  *      compression (see scripts/kallsyms.c for a more complete description)
  */
 #include <linux/kallsyms.h>
-#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/seq_file.h>
 #include <linux/fs.h>
@@ -20,13 +19,10 @@
 #include <linux/err.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>	/* for cond_resched */
-#include <linux/mm.h>
 #include <linux/ctype.h>
 #include <linux/slab.h>
 #include <linux/filter.h>
 #include <linux/compiler.h>
-
-#include <asm/sections.h>
 
 /*
  * These will be re-linked against their real values
@@ -50,37 +46,6 @@ extern const u8 kallsyms_token_table[] __weak;
 extern const u16 kallsyms_token_index[] __weak;
 
 extern const unsigned long kallsyms_markers[] __weak;
-
-static inline int is_kernel_inittext(unsigned long addr)
-{
-	if (addr >= (unsigned long)_sinittext
-	    && addr <= (unsigned long)_einittext)
-		return 1;
-	return 0;
-}
-
-static inline int is_kernel_text(unsigned long addr)
-{
-	if ((addr >= (unsigned long)_stext && addr <= (unsigned long)_etext) ||
-	    arch_is_kernel_text(addr))
-		return 1;
-	return in_gate_area_no_mm(addr);
-}
-
-static inline int is_kernel(unsigned long addr)
-{
-	if (addr >= (unsigned long)_stext && addr <= (unsigned long)_end)
-		return 1;
-	return in_gate_area_no_mm(addr);
-}
-
-static int is_ksym_addr(unsigned long addr)
-{
-	if (IS_ENABLED(CONFIG_KALLSYMS_ALL))
-		return is_kernel(addr);
-
-	return is_kernel_text(addr) || is_kernel_inittext(addr);
-}
 
 /*
  * Expand a compressed symbol data into the resulting uncompressed string,
@@ -527,6 +492,7 @@ struct kallsym_iter {
 	char name[KSYM_NAME_LEN];
 	char module_name[MODULE_NAME_LEN];
 	int exported;
+	int show_value;
 };
 
 static int get_ksymbol_mod(struct kallsym_iter *iter)
@@ -627,6 +593,11 @@ static void s_stop(struct seq_file *m, void *p)
 {
 }
 
+#ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+extern bool susfs_starts_with(const char *str, const char *prefix);
+#endif
+
+
 static int s_show(struct seq_file *m, void *p)
 {
 	struct kallsym_iter *iter = m->private;
@@ -647,8 +618,38 @@ static int s_show(struct seq_file *m, void *p)
 		seq_printf(m, "%pK %c %s\t[%s]\n", (void *)iter->value,
 			   type, iter->name, iter->module_name);
 	} else
+
+#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
 		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
 			   iter->type, iter->name);
+#else
+	{
+		if (susfs_starts_with(iter->name, "ksu_") ||
+			susfs_starts_with(iter->name, "__ksu_") ||
+			susfs_starts_with(iter->name, "susfs_") ||
+			susfs_starts_with(iter->name, "ksud") ||
+			susfs_starts_with(iter->name, "is_ksu_") ||
+			susfs_starts_with(iter->name, "is_manager_") ||
+			susfs_starts_with(iter->name, "escape_to_") ||
+			susfs_starts_with(iter->name, "setup_selinux") ||
+			susfs_starts_with(iter->name, "track_throne") ||
+			susfs_starts_with(iter->name, "on_post_fs_data") ||
+			susfs_starts_with(iter->name, "try_umount") ||
+			susfs_starts_with(iter->name, "kernelsu") ||
+			susfs_starts_with(iter->name, "__initcall__kmod_kernelsu") ||
+			susfs_starts_with(iter->name, "apply_kernelsu") ||
+			susfs_starts_with(iter->name, "handle_sepolicy") ||
+			susfs_starts_with(iter->name, "getenforce") ||
+			susfs_starts_with(iter->name, "setenforce") ||
+			susfs_starts_with(iter->name, "is_zygote"))
+		{
+
+			return 0;
+		}
+		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+			   iter->type, iter->name);
+	}
+#endif
 	return 0;
 }
 
@@ -658,6 +659,41 @@ static const struct seq_operations kallsyms_op = {
 	.stop = s_stop,
 	.show = s_show
 };
+
+static inline int kallsyms_for_perf(void)
+{
+#ifdef CONFIG_PERF_EVENTS
+	extern int sysctl_perf_event_paranoid;
+	if (sysctl_perf_event_paranoid <= 1)
+		return 1;
+#endif
+	return 0;
+}
+
+/*
+ * We show kallsyms information even to normal users if we've enabled
+ * kernel profiling and are explicitly not paranoid (so kptr_restrict
+ * is clear, and sysctl_perf_event_paranoid isn't set).
+ *
+ * Otherwise, require CAP_SYSLOG (assuming kptr_restrict isn't set to
+ * block even that).
+ */
+bool kallsyms_show_value(const struct cred *cred)
+{
+	switch (kptr_restrict) {
+	case 0:
+		if (kallsyms_for_perf())
+			return true;
+	/* fallthrough */
+	case 1:
+		if (security_capable(cred, &init_user_ns, CAP_SYSLOG,
+				     CAP_OPT_NOAUDIT) == 0)
+			return true;
+	/* fallthrough */
+	default:
+		return false;
+	}
+}
 
 static int kallsyms_open(struct inode *inode, struct file *file)
 {
@@ -672,6 +708,11 @@ static int kallsyms_open(struct inode *inode, struct file *file)
 		return -ENOMEM;
 	reset_iter(iter, 0);
 
+	/*
+	 * Instead of checking this on every s_show() call, cache
+	 * the result here at open time.
+	 */
+	iter->show_value = kallsyms_show_value(file->f_cred);
 	return 0;
 }
 

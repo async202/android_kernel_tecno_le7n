@@ -203,7 +203,9 @@ struct dpmaif_bat_page_t {
 };
 
 #define MAX_BD_NUM (MAX_SKB_FRAGS + 1)
+#if 0
 #define DPMAIF_TRAFFIC_MONITOR_INTERVAL 10
+#endif
 #define SKB_RX_LIST_MAX_LEN 0xFFFFFFFF
 
 struct dpmaif_bat_request {
@@ -346,7 +348,7 @@ struct dpmaif_tx_queue {
 
 	spinlock_t tx_lock;
 	atomic_t tx_processing;
-#if DPMAIF_TRAFFIC_MONITOR_INTERVAL
+#ifdef DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	unsigned int busy_count;
 #endif
 	atomic_t tx_resume_tx;
@@ -390,7 +392,7 @@ struct hif_dpmaif_ctrl {
 	atomic_t dpmaif_irq_enabled;
 
 	struct ccci_hif_ops *ops;
-#if DPMAIF_TRAFFIC_MONITOR_INTERVAL
+#ifdef DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	unsigned int tx_traffic_monitor[DPMAIF_TXQ_NUM];
 	unsigned int rx_traffic_monitor[DPMAIF_RXQ_NUM];
 	unsigned int tx_pre_traffic_monitor[DPMAIF_TXQ_NUM];
@@ -459,10 +461,12 @@ static inline int ccci_dpmaif_hif_set_wakeup_src(unsigned char hif_id,
 	struct hif_dpmaif_ctrl *hif_ctrl =
 		(struct hif_dpmaif_ctrl *)ccci_hif_get_by_id(hif_id);
 
-	if (hif_ctrl)
-		return atomic_set(&hif_ctrl->wakeup_src, value);
-	else
-		return -1;
+    if (hif_ctrl) {
+        atomic_set(&hif_ctrl->wakeup_src, value);
+        return 0;
+    } else {
+        return -1;
+    }
 
 }
 

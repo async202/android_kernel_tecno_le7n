@@ -160,9 +160,6 @@ static int __init set_single_channel_test_angent(int channel)
 		temp = Reg_Readl(dramc_ao_base+base_reg[rank]) & 0xF;
 		if ((ddr_type == TYPE_LPDDR4) || (ddr_type == TYPE_LPDDR4X))
 			temp |= (test_agent_base>>1) & 0xFFFFFFF0;
-		else if ((ddr_type == TYPE_LPDDR3) ||
-				platform_support_dram_type())
-			temp |= (test_agent_base) & 0xFFFFFFF0;
 		else {
 			pr_err("[LastDRAMC] undefined DRAM type\n");
 			return -1;

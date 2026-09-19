@@ -23,12 +23,12 @@
 #define IRQTag "KEEPER"
 #define pr_fmt(fmt) MyTag "[%s] " fmt, __func__
 
-#define ISP_DEBUG
+#define ISP_DEBUG 0
 #ifdef ISP_DEBUG
 #define LOG_DBG(format, args...)    pr_info(MyTag "[%s] " format, \
 	 __func__, ##args)
 #else
-#define LOG_DBG(format, args...)
+#define LOG_DBG(format, args...) ((void)0)
 #endif
 
 #define LOG_INF(format, args...)       pr_info(MyTag "[%s] " format, \
@@ -1012,7 +1012,7 @@ static struct SV_LOG_STR gSvLog[ISP_IRQ_TYPE_AMOUNT];
 	usec = do_div(sec, 1000000);\
 }
 
-#if 1
+#ifdef CONFIG_MTK_ENG_BUILD
 #define IRQ_LOG_KEEPER(irq, ppb, logT, fmt, ...) do {\
 	char *ptr; \
 	char *pDes;\
@@ -1103,10 +1103,10 @@ static struct SV_LOG_STR gSvLog[ISP_IRQ_TYPE_AMOUNT];
 
 #else
 #define IRQ_LOG_KEEPER(irq, ppb, logT, fmt, args...) \
-		pr_info(IRQTag fmt,  ##args)
+		pr_debug(IRQTag fmt,  ##args)
 #endif
 
-#if 1
+#ifdef CONFIG_MTK_ENG_BUILD
 #define IRQ_LOG_PRINTER(irq, ppb_in, logT_in) do {\
 	struct SV_LOG_STR *pSrc = &gSvLog[irq];\
 	char *ptr;\
@@ -6675,7 +6675,7 @@ static signed int ISP_FLUSH_IRQ(struct ISP_WAIT_IRQ_STRUCT *irqinfo)
 {
 	unsigned long flags;
 
-	pr_info("type(%d)userKey(%d)St_type(%d)St(0x%x)",
+	pr_debug("type(%d)userKey(%d)St_type(%d)St(0x%x)",
 		irqinfo->Type, irqinfo->EventInfo.UserKey,
 		irqinfo->EventInfo.St_type, irqinfo->EventInfo.Status);
 

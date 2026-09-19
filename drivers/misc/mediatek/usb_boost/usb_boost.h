@@ -50,7 +50,7 @@ void register_usb_boost_act(int type_id, int action_id,
 #define USB_BOOST_DBG(fmt, args...) \
 	pr_notice("USB_BOOST, <%s(), %d> " fmt, __func__, __LINE__, ## args)
 #else
-#define USB_BOOST_DBG(fmt, args...) do {} while (0)
+#define USB_BOOST_DBG(fmt, args...) ((void)0)
 #endif
 
 #endif

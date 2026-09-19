@@ -549,10 +549,6 @@ static int spm_trigger_dvfs(int kicker, int opp, bool fix)
 	/* u32 md_req[NUM_OPP] = {0x0, 0x0, 0x0, 0x0}; */
 	u32 dvfsrc_level[NUM_OPP] = {0x8, 0x4, 0x2, 0x1};
 
-	if (__spm_get_dram_type() == SPMFW_LP3_1CH) {
-		vcore_req[1] = 0x1;
-		emi_req[1] = 0x1;
-	}
 #endif
 
 	if (fix)
@@ -873,10 +869,6 @@ void spm_request_dvfs_opp(int id, enum dvfs_opp opp)
 		cmmgr_request_opp = (unsigned int)opp;
 		opp = MIN(dram_request_opp, cmmgr_request_opp);
 
-		if (__spm_get_dram_type() == SPMFW_LP3_1CH)
-			mt_secure_call(MTK_SIP_KERNEL_SPM_VCOREFS_ARGS,
-				VCOREFS_SMC_CMD_2, 0, emi_req_lp3[opp], 0);
-		else
 			mt_secure_call(MTK_SIP_KERNEL_SPM_VCOREFS_ARGS,
 				VCOREFS_SMC_CMD_2, 0, emi_req[opp], 0);
 		break;

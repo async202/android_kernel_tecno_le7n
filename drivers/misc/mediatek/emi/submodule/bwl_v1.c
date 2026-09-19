@@ -336,7 +336,7 @@ void bwl_init(struct platform_driver *emi_ctrl)
 	LAST_EMI_BASE = get_dbg_info_base(0xE31C);
 #endif
 
-	env = decode_bwl_env(get_dram_type(), get_ch_num(), get_rk_num());
+	env = decode_bwl_env(get_dram_type(), get_rk_num());
 	env_cen_reg = cen_reg[env];
 	env_chn_reg = chn_reg[env];
 

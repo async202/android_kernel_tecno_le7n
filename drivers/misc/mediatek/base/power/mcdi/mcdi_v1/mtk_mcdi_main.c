@@ -72,7 +72,7 @@ static const char *ac_cpu_cond_name[NF_ANY_CORE_CPU_COND_INFO] = {
 static unsigned long long mcdi_heart_beat_log_prev;
 static DEFINE_SPINLOCK(mcdi_heart_beat_spin_lock);
 
-static unsigned int mcdi_heart_beat_log_dump_thd = 5000;          /* 5 sec */
+static unsigned int mcdi_heart_beat_log_dump_thd = 30000;          /* 30 sec */
 
 static bool mcdi_stress_en;
 static unsigned int mcdi_stress_us = 10 * 1000;
@@ -643,7 +643,7 @@ void mcdi_heart_beat_log_dump(void)
 	mcdi_buf_append(buf, ", system_idle_hint = %08x",
 						system_idle_hint_result_raw());
 
-	printk_deferred("[mcdi]%s\n", get_mcdi_buf(buf));
+	pr_debug("[mcdi]%s\n", get_mcdi_buf(buf));
 }
 
 int wfi_enter(int cpu)

@@ -357,6 +357,7 @@ static int get_devinfo(void)
 	 * One-line
 	 */
 
+#ifdef CONFIG_MTK_AEE_FEATURE
 	/* CCI */
 	aee_rr_rec_ptp_devinfo_3((unsigned int) pi_efuse_idx[0].orig_mdes_bdes);
 	aee_rr_rec_ptp_devinfo_4((unsigned int) pi_efuse_idx[0].orig_mtdes);
@@ -369,6 +370,7 @@ static int get_devinfo(void)
 
 	/* Big: MDES and BDES */
 	aee_rr_rec_ptp_devinfo_7((unsigned int) pi_efuse_idx[2].orig_mdes_bdes);
+#endif
 
 	/*
 	 * Two-line
@@ -3467,10 +3469,6 @@ void eem_init01(void)
 
 				det->real_vboot = det->ops->volt_2_eem(det,
 					det->ops->get_volt(det));
-				if (timeout++ % 300 == 0)
-					eem_debug
-("@%s():%d, get_volt(%s) = 0x%08X, VBOOT = 0x%08X\n",
-__func__, __LINE__, det->name, det->real_vboot, det->VBOOT);
 			}
 			/* BUG_ON(det->real_vboot != det->VBOOT); */
 			WARN_ON(det->real_vboot != det->VBOOT);

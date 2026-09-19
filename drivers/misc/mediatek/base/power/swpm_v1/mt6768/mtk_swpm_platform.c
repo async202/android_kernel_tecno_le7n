@@ -636,7 +636,7 @@ int swpm_platform_init(void)
 
 	/* copy pwr data */
 	swpm_info_ref->ddr_type = dram_type;
-	if (dram_type == TYPE_LPDDR3) {
+	/*if (dram_type == TYPE_LPDDR3) {
 		memcpy(swpm_info_ref->ddr_opp_freq, ddr_opp_freq_lp3,
 			sizeof(ddr_opp_freq));
 		memcpy(swpm_info_ref->aphy_pwr_tbl, aphy_def_pwr_tbl_lp3,
@@ -647,7 +647,7 @@ int swpm_platform_init(void)
 		swpm_info("copy pwr data (size: aphy/dram = %ld/%ld) done!\n",
 			(unsigned long)sizeof(aphy_def_pwr_tbl_lp3),
 			(unsigned long)sizeof(dram_def_pwr_conf_lp3));
-	} else {
+	} else {*/
 		memcpy(swpm_info_ref->ddr_opp_freq, ddr_opp_freq,
 			sizeof(ddr_opp_freq));
 		memcpy(swpm_info_ref->aphy_pwr_tbl, aphy_def_pwr_tbl,
@@ -658,7 +658,7 @@ int swpm_platform_init(void)
 		swpm_info("copy pwr data (size: aphy/dram = %ld/%ld) done!\n",
 			(unsigned long)sizeof(aphy_def_pwr_tbl),
 			(unsigned long)sizeof(dram_def_pwr_conf));
-	}
+	//}
 #else
 	memcpy(swpm_info_ref->ddr_opp_freq, ddr_opp_freq,
 		sizeof(ddr_opp_freq));

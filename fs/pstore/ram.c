@@ -44,6 +44,11 @@
 #endif
 #define memcpy memcpy_toio
 #endif
+#if __BITS_PER_LONG == 64
+# define TVSEC_FMT "%ld"
+#else
+# define TVSEC_FMT "%lld"
+#endif
 
 static ulong record_size = MIN_MEM_SIZE;
 module_param(record_size, ulong, 0400);
@@ -171,21 +176,23 @@ ramoops_get_next_prz(struct persistent_ram_zone *przs[], uint *c, uint max,
 	return prz;
 }
 
-static int ramoops_read_kmsg_hdr(char *buffer, struct timespec *time,
+static int ramoops_read_kmsg_hdr(char *buffer, struct timespec64 *time,
 				  bool *compressed)
 {
 	char data_type;
 	int header_length = 0;
 
-	if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lu.%lu-%c\n%n", &time->tv_sec,
-			&time->tv_nsec, &data_type, &header_length) == 3) {
+	if (sscanf(buffer, RAMOOPS_KERNMSG_HDR TVSEC_FMT ".%lu-%c\n%n",
+		   &time->tv_sec, &time->tv_nsec, &data_type,
+		   &header_length) == 3) {
 		if (data_type == 'C')
 			*compressed = true;
 		else
 			*compressed = false;
-	} else if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lu.%lu\n%n",
-			&time->tv_sec, &time->tv_nsec, &header_length) == 2) {
-			*compressed = false;
+	} else if (sscanf(buffer, RAMOOPS_KERNMSG_HDR TVSEC_FMT ".%lu\n%n",
+			  &time->tv_sec, &time->tv_nsec,
+			  &header_length) == 2) {
+		*compressed = false;
 	} else {
 		time->tv_sec = 0;
 		time->tv_nsec = 0;
@@ -384,7 +391,7 @@ static size_t ramoops_write_kmsg_hdr(struct persistent_ram_zone *prz,
 	char *hdr;
 	size_t len;
 
-	hdr = kasprintf(GFP_ATOMIC, RAMOOPS_KERNMSG_HDR "%lu.%lu-%c\n",
+	hdr = kasprintf(GFP_ATOMIC, RAMOOPS_KERNMSG_HDR TVSEC_FMT ".%lu-%c\n",
 		record->time.tv_sec,
 		record->time.tv_nsec / 1000,
 		record->compressed ? 'C' : 'D');
@@ -440,9 +447,12 @@ static int notrace ramoops_pstore_write(struct pstore_record *record)
 		return -EINVAL;
 
 	/*
-	 * Allow all dmesg dump types (reboot, panic, oops, emergency) so that
-	 * any system restart automatically saves full logs to persistent RAM.
+	 * Out of the various dmesg dump types, ramoops is currently designed
+	 * to only store crash logs, rather than storing general kernel logs.
 	 */
+	if (record->reason != KMSG_DUMP_OOPS &&
+	    record->reason != KMSG_DUMP_PANIC)
+		return -EINVAL;
 
 	/* Skip Oopes when configured to do so. */
 	if (record->reason == KMSG_DUMP_OOPS && !cxt->dump_oops)
@@ -615,6 +625,7 @@ static int ramoops_init_przs(const char *name,
 	}
 
 	zone_sz = mem_sz / *cnt;
+	zone_sz = ALIGN_DOWN(zone_sz, 2);
 	if (!zone_sz) {
 		dev_err(dev, "%s zone size == 0\n", name);
 		goto fail;
@@ -763,15 +774,6 @@ static int ramoops_probe(struct platform_device *pdev)
 	phys_addr_t paddr;
 	int err = -EINVAL;
 
-	if (dev_of_node(dev) && !pdata) {
-		pdata = &pdata_local;
-		memset(pdata, 0, sizeof(*pdata));
-
-		err = ramoops_parse_dt(pdev, pdata);
-		if (err < 0)
-			goto fail_out;
-	}
-
 	/*
 	 * Only a single ramoops area allowed at a time, so fail extra
 	 * probes.
@@ -781,9 +783,19 @@ static int ramoops_probe(struct platform_device *pdev)
 		goto fail_out;
 	}
 
+	if (dev_of_node(dev) && !pdata) {
+		pdata = &pdata_local;
+		memset(pdata, 0, sizeof(*pdata));
+
+		err = ramoops_parse_dt(pdev, pdata);
+		if (err < 0)
+			goto fail_out;
+	}
+
 	/* Make sure we didn't get bogus platform data pointer. */
 	if (!pdata) {
 		pr_err("NULL platform data\n");
+		err = -EINVAL;
 		goto fail_out;
 	}
 
@@ -791,6 +803,7 @@ static int ramoops_probe(struct platform_device *pdev)
 			!pdata->ftrace_size && !pdata->pmsg_size)) {
 		pr_err("The memory size and the record/console size must be "
 			"non-zero\n");
+		err = -EINVAL;
 		goto fail_out;
 	}
 

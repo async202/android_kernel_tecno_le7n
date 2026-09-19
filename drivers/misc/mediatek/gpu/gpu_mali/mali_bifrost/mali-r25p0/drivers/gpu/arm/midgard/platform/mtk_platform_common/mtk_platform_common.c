@@ -428,7 +428,7 @@ void proc_mali_register(void)
 	if (!mali_pentry)
 		return;
 
-	g_aee_workqueue = alloc_ordered_workqueue("mali_aeewp", WQ_FREEZABLE | WQ_MEM_RECLAIM);
+	g_aee_workqueue = alloc_ordered_workqueue("mali_aeewp", WQ_FREEZABLE | WQ_MEM_RECLAIM | WQ_POWER_EFFICIENT);
 	INIT_WORK(&g_aee_work, aee_Handle);
 	INIT_WORK(&g_pa_work, pa_Handle);
 

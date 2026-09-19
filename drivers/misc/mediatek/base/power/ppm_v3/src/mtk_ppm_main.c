@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG 1
+#define DEBUG 0
 /* system includes */
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -27,7 +27,6 @@
 #include <linux/string.h>
 #include <linux/topology.h>
 #include "mtk_ppm_internal.h"
-#include <trace/events/mtk_events.h>
 #include <linux/of.h>
 
 /*==============================================================*/
@@ -658,15 +657,6 @@ int mt_ppm_main(void)
 			pos->update_limit_cb();
 			pos->is_limit_updated = true;
 
-			for (idx = 0; idx < pos->req.cluster_num; idx++) {
-				trace_ppm_user_setting(
-					pos->policy,
-					idx,
-					pos->req.limit[idx].min_cpufreq_idx,
-					pos->req.limit[idx].max_cpufreq_idx
-				);
-			}
-
 			ppm_unlock(&pos->lock);
 		}
 	}
@@ -710,13 +700,13 @@ int mt_ppm_main(void)
 					c_req->cpu_limit[i].advise_cpu_core
 				);
 		}
-
+/*  For performance removing CONFIG_MTK_SCHED_TRACERS
 #ifndef NO_MTK_TRACE
 		trace_ppm_update(policy_mask,
 			ppm_main_info.min_power_budget,
 				c_req->root_cluster, buf);
 #endif
-
+*/
 #ifdef CONFIG_MTK_RAM_CONSOLE
 		for (i = 0; i < c_req->cluster_num; i++) {
 			aee_rr_rec_ppm_cluster_limit(i,

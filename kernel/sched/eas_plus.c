@@ -1172,7 +1172,7 @@ static int find_energy_efficient_cpu_enhanced(struct task_struct *p,
 #endif
 
 			/* Skip CPUs that will be overutilized. */
-			wake_util = cpu_util_without(cpu, p);
+			wake_util = (prefer_idle && idle_cpu(cpu)) ? 0 : cpu_util_without(cpu, p);
 			util = wake_util + task_util_est(p);
 			cpu_cap = capacity_of(cpu);
 			spare_cap = cpu_cap - util;
@@ -1220,7 +1220,7 @@ static int find_energy_efficient_cpu_enhanced(struct task_struct *p,
 				if (!boosted && cpu_cap > target_cap)
 					continue;
 				idle = idle_get_state(cpu_rq(cpu));
-				if (idle && idle->exit_latency > min_exit_lat &&
+				if (idle && idle->exit_latency >= min_exit_lat &&
 						cpu_cap == target_cap)
 					continue;
 

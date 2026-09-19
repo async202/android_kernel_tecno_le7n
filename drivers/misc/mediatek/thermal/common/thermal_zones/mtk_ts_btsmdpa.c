@@ -68,7 +68,7 @@ static int trip_temp[10] = { 120000, 110000, 100000, 90000, 80000,
 				70000, 65000, 60000, 55000, 50000 };
 
 static struct thermal_zone_device *thz_dev;
-static int mtkts_btsmdpa_debug_log;
+static int mtkts_btsmdpa_debug_log = 0;
 static int kernelmode;
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -723,7 +723,7 @@ int mtkts_btsmdpa_get_hw_temp(void)
 
 #if MTKTS_BTSMDPA_SW_FILTER
 	if ((t_ret > 100000) || (t_ret < -30000)) {
-		mtkts_btsmdpa_printk(
+		mtkts_btsmdpa_dprintk(
 			"[Power/BTSMDPA_Thermal] drop this data\n");
 		t_ret = pre_temp1;
 	} else if ((pre_temp1 != 0)
@@ -744,7 +744,7 @@ int mtkts_btsmdpa_get_hw_temp(void)
 	mutex_unlock(&BTSMDPA_lock);
 
 	if (t_ret > 40000)	/* abnormal high temp */
-		mtkts_btsmdpa_printk("T_btsmdpa=%d\n", t_ret);
+		mtkts_btsmdpa_dprintk("T_btsmdpa=%d\n", t_ret);
 
 	mtkts_btsmdpa_dprintk("[%s] T_btsmdpa, %d\n", __func__,
 									t_ret);
@@ -1440,7 +1440,7 @@ static int mtkts_btsmdpa_probe(struct platform_device *pdev)
 	}
 
 	g_ADC_channel = thermistor_ch1->channel->channel;
-	mtkts_btsmdpa_printk("[%s]get auxadc iio ch: %d\n", __func__,
+	mtkts_btsmdpa_dprintk("[%s]get auxadc iio ch: %d\n", __func__,
 		thermistor_ch1->channel->channel);
 
 

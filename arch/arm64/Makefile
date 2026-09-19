@@ -18,11 +18,13 @@ ifeq ($(CONFIG_RELOCATABLE), y)
 # Pass --no-apply-dynamic-relocs to restore pre-binutils-2.27 behaviour
 # for relative relocs, since this leads to better Image compression
 # with the relocation offsets always being zero.
-LDFLAGS_vmlinux		+= -shared -Bsymbolic -z notext -z norelro \
+LDFLAGS_vmlinux		+= -shared -Bsymbolic -z notext \
 			$(call ld-option, --no-apply-dynamic-relocs)
 endif
 
 ifeq ($(CONFIG_ARM64_ERRATUM_843419),y)
+KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
+
   ifeq ($(call ld-option, --fix-cortex-a53-843419),)
 $(warning ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum)
   else
@@ -50,11 +52,48 @@ $(warning LSE atomics not supported by binutils)
   endif
 endif
 
+cc_has_k_constraint := $(call try-run,echo				\
+	'int main(void) {						\
+		asm volatile("and w0, w0, %w0" :: "K" (4294967295));	\
+		return 0;						\
+	}' | $(CC) -S -x c -o "$$TMP" -,,-DCONFIG_CC_HAS_K_CONSTRAINT=1)
+
 ifeq ($(CONFIG_ARM64), y)
 brokengasinst := $(call as-instr,1:\n.inst 0\n.rept . - 1b\n\nnop\n.endr\n,,-DCONFIG_BROKEN_GAS_INST=1)
 
   ifneq ($(brokengasinst),)
 $(warning Detected assembler with broken .inst; disassembly will be unreliable)
+  endif
+endif
+
+ifeq ($(CONFIG_COMPAT_VDSO), y)
+  ifeq ($(CROSS_COMPILE_COMPAT),)
+    CROSS_COMPILE_COMPAT ?= $(CONFIG_CROSS_COMPILE_COMPAT:"%"=%)
+  else
+    CROSS_COMPILE_COMPAT ?= $(CONFIG_CROSS_COMPILE_ARM32:"%"=%)
+  endif
+
+  # Check that the user has provided a valid prefix for the 32-bit toolchain.
+  # To prevent selecting the system $(cc-name) by default, the prefix is not
+  # allowed to be empty, unlike CROSS_COMPILE. In the unlikely event that the
+  # system $(cc-name) is actually the 32-bit ARM compiler to be used, the
+  # variable can be set to the dirname (e.g. CROSS_COMPILE_COMPAT=/usr/bin/).
+  # Note: this Makefile is read both before and after regenerating the config
+  # (if needed). Any warning appearing before the config has been regenerated
+  # should be ignored. If the error is triggered and you set
+  # CONFIG_CROSS_COMPILE_COMPAT, set CROSS_COMPILE_COMPAT to an appropriate value
+  # when invoking make and fix CONFIG_CROSS_COMPILE_COMPAT.
+  ifeq ($(cc-name),clang)
+    export CONFIG_VDSO32 := y
+    vdso32 := -DCONFIG_VDSO32=1
+  else ifeq ($(CROSS_COMPILE_COMPAT),)
+    $(error CROSS_COMPILE_COMPAT not defined or empty, the compat vDSO will not be built)
+  else ifeq ($(shell which $(CROSS_COMPILE_COMPAT)$(cc-name) 2> /dev/null),)
+    $(error $(CROSS_COMPILE_COMPAT)$(cc-name) not found, check CROSS_COMPILE_COMPAT)
+  else
+    export CROSS_COMPILE_COMPAT
+    export CONFIG_VDSO32 := y
+    vdso32 := -DCONFIG_VDSO32=1
   endif
 endif
 
@@ -65,11 +104,10 @@ KBUILD_CFLAGS	+= -mno-implicit-float
 else
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 endif
-KBUILD_CFLAGS	+= $(lseinstr) $(brokengasinst)
+KBUILD_CFLAGS	+= $(lseinstr) $(brokengasinst) $(vdso32) $(cc_has_k_constraint)
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
-KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
 KBUILD_CFLAGS	+= -fno-pic
-KBUILD_AFLAGS	+= $(lseinstr) $(brokengasinst)
+KBUILD_AFLAGS	+= $(lseinstr) $(brokengasinst) $(vdso32)
 
 KBUILD_CFLAGS	+= $(call cc-option,-mabi=lp64)
 KBUILD_AFLAGS	+= $(call cc-option,-mabi=lp64)
@@ -84,9 +122,9 @@ CHECKFLAGS	+= -D__AARCH64EB__
 AS		+= -EB
 LD		+= -EB
 ifeq ($(ld-name),gold)
-LDFLAGS		+= -maarch64_elf64_be_vec
+LDFLAGS		+= -maarch64_elf64_be_vec -z norelro
 else
-LDFLAGS		+= -maarch64linuxb
+LDFLAGS		+= -maarch64elfb -z norelro
 endif
 UTS_MACHINE	:= aarch64_be
 else
@@ -95,14 +133,14 @@ CHECKFLAGS	+= -D__AARCH64EL__
 AS		+= -EL
 LD		+= -EL
 ifeq ($(ld-name),gold)
-LDFLAGS		+= -maarch64_elf64_le_vec
+LDFLAGS		+= -maarch64_elf64_le_vec -z norelro
 else
-LDFLAGS		+= -maarch64linux
+LDFLAGS		+= -maarch64elf -z norelro
 endif
 UTS_MACHINE	:= aarch64
 endif
 
-CHECKFLAGS	+= -D__aarch64__ -m64
+CHECKFLAGS	+= -D__aarch64__
 
 ifeq ($(CONFIG_ARM64_MODULE_CMODEL_LARGE), y)
 KBUILD_CFLAGS_MODULE	+= -mcmodel=large
@@ -125,7 +163,7 @@ TEXT_OFFSET := $(shell awk "BEGIN {srand(); printf \"0x%06x\n\", \
 		 int(2 * 1024 * 1024 / (2 ^ $(CONFIG_ARM64_PAGE_SHIFT)) * \
 		 rand()) * (2 ^ $(CONFIG_ARM64_PAGE_SHIFT))}")
 else
-TEXT_OFFSET := 0x00080000
+TEXT_OFFSET := 0x0
 endif
 
 ifeq ($(cc-name),clang)
@@ -172,8 +210,8 @@ KBUILD_DTBS	:= dtbs
 
 all:	Image.gz $(KBUILD_DTBS) $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_KERNEL_IMAGE_NAME))
 
-MTK_PLATFORM := $(CONFIG_MTK_PLATFORM:"%"=%)
-MTK_PROJECT := $(CONFIG_ARCH_MTK_PROJECT:"%"=%)
+MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+MTK_PROJECT := $(subst ",,$(CONFIG_ARCH_MTK_PROJECT))
 export MTK_PLATFORM MTK_PROJECT
 
 Image: vmlinux
@@ -186,6 +224,9 @@ zinstall install:
 	$(Q)$(MAKE) $(build)=$(boot) $@
 
 %.dtb: scripts
+	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+
+%.dtbo: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
 
 PHONY += dtbs dtbs_install
@@ -205,6 +246,7 @@ Image.gz-dtb: vmlinux scripts dtbs Image.gz
 PHONY += vdso_install
 vdso_install:
 	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso $@
+	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso32 $@
 
 # We use MRPROPER_FILES and CLEAN_FILES now
 archclean:
@@ -221,6 +263,8 @@ ifeq ($(KBUILD_EXTMOD),)
 prepare: vdso_prepare
 vdso_prepare: prepare0
 	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso include/generated/vdso-offsets.h
+	$(if $(CONFIG_VDSO32),$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso32 \
+					  include/generated/vdso32-offsets.h)
 endif
 
 define archhelp

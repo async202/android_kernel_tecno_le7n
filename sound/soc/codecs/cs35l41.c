@@ -12,7 +12,6 @@
  * published by the Free Software Foundation.
  *
  */
-#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/version.h>
@@ -219,9 +218,9 @@ static int cs35l41_analog_mute_get(struct snd_kcontrol *kcontrol,
 	ret = regmap_read(cs35l41->regmap, CS35L41_AMP_OUT_MUTE, &value);
 	mute_sts = value >> 4;
 	if (mute_sts) {
-		dev_info(cs35l41->dev, "PA is Analog muted");
+		dev_dbg(cs35l41->dev, "PA is Analog muted");
 	} else {
-		dev_info(cs35l41->dev, "PA is Analog unmuted");
+		dev_dbg(cs35l41->dev, "PA is Analog unmuted");
 	}
 	ucontrol->value.integer.value[0] = mute_sts;
 	return ret;
@@ -237,11 +236,11 @@ static int cs35l41_analog_mute_put(struct snd_kcontrol *kcontrol,
 	if (ucontrol->value.integer.value[0]) {
 		ret = regmap_write(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
 			1 << 4);
-		dev_info(cs35l41->dev, "Analog muting PA");
+		dev_dbg(cs35l41->dev, "Analog muting PA");
 	} else {
 		ret = regmap_write(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
 			0 << 4);
-		dev_info(cs35l41->dev, "Analog unmuting PA");
+		dev_dbg(cs35l41->dev, "Analog unmuting PA");
 	}
 
 	return ret;
@@ -1557,7 +1556,7 @@ static int cs35l41_codec_set_sysclk(struct snd_soc_codec *codec,
 	cs35l41->extclk_freq = freq;
 
 	pr_debug("++++>CSPL: %s: clk_id = %d, src = %d, freq = %d, dir = %d.\n", __func__, clk_id, source, freq, dir);
-	dev_info(codec->dev, "%s: clk_id=%d, src=%d, freq=%d\n", __func__, clk_id, source, freq);
+	dev_dbg(codec->dev, "%s: clk_id=%d, src=%d, freq=%d\n", __func__, clk_id, source, freq);
 
 	switch (clk_id) {
 	case 0:
@@ -1607,7 +1606,7 @@ static int cs35l41_codec_set_sysclk(struct snd_soc_codec *codec,
 			1 << CS35L41_PLL_CLK_EN_SHIFT);
 
 	regmap_read(cs35l41->regmap, CS35L41_PLL_CLK_CTRL, &val);
-	dev_info(codec->dev, "%s: 0x%x <== 0x%x\n", __func__, CS35L41_PLL_CLK_CTRL, val);
+	dev_dbg(codec->dev, "%s: 0x%x <== 0x%x\n", __func__, CS35L41_PLL_CLK_CTRL, val);
 	pr_debug("---->CSPL: %s.\n", __func__);
 
 	return 0;
@@ -2103,7 +2102,7 @@ static int cs35l41_handle_of_data(struct device *dev,
 	} else {
 		/* Device tree provides file name */
 		num_fast_switch			= (size_t)ret;
-		dev_info(dev, "num_fast_switch:%zu\n", num_fast_switch);
+		dev_dbg(dev, "num_fast_switch:%zu\n", num_fast_switch);
 		cs35l41->fast_switch_names =
 			devm_kmalloc(dev, num_fast_switch * sizeof(char *),
 				     GFP_KERNEL);
@@ -2113,7 +2112,7 @@ static int cs35l41_handle_of_data(struct device *dev,
 					      cs35l41->fast_switch_names,
 					      num_fast_switch);
 		for (i = 0; i < num_fast_switch; i++) {
-			dev_info(dev, "%d:%s\n", i,
+			dev_dbg(dev, "%d:%s\n", i,
 				 cs35l41->fast_switch_names[i]);
 		}
 		cs35l41->fast_switch_enum.items	= num_fast_switch;
@@ -2399,7 +2398,7 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 		ret = PTR_ERR(cs35l41->reset_gpio);
 		cs35l41->reset_gpio = NULL;
 		if (ret == -EBUSY) {
-			dev_info(cs35l41->dev,
+			dev_dbg(cs35l41->dev,
 				 "Reset line busy, assuming shared reset\n");
 		} else {
 			dev_err(cs35l41->dev,
@@ -2534,7 +2533,7 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 		goto err;
 	}
 
-	dev_info(cs35l41->dev, "Cirrus Logic CS35L41 (%x), Revision: %02X\n",
+	dev_dbg(cs35l41->dev, "Cirrus Logic CS35L41 (%x), Revision: %02X\n",
 			regid, reg_revid);
 
 	return 0;

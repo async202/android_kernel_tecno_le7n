@@ -13,6 +13,7 @@
 #define LINUX_MMC_CQ_HCI_H
 #include <linux/mmc/core.h>
 #include <mt-plat/sync_write.h>
+#include <linux/platform_device.h>
 
 /* registers */
 /* version */

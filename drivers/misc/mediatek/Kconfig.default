@@ -8,7 +8,6 @@ config ANDROID_DEFAULT_SETTING
 	select ARM64_SW_TTBR0_PAN
 	select ARMV8_DEPRECATED if COMPAT
 	select ASHMEM
-	select AUDIT
 	select BINFMT_ELF
 	select BINFMT_SCRIPT
 	select BLK_DEV_INITRD
@@ -43,8 +42,6 @@ config ANDROID_DEFAULT_SETTING
 	select CRYPTO_SHA512
 	select CRYPTO_XCBC
 	select DEBUG_LIST
-	select DEBUG_RODATA
-	select DEBUG_SET_MODULE_RONX
 	select DEFAULT_SECURITY_SELINUX
 	select DM_SNAPSHOT
 	select DM_VERITY
@@ -234,7 +231,6 @@ config ANDROID_DEFAULT_SETTING
 	select STAGING
 	select STATIC_USERMODEHELPER
 	select STRICT_KERNEL_RWX
-	select STRICT_MODULE_RWX
 	select SUSPEND
 	select SWP_EMULATION if ARMV8_DEPRECATED
 	select SYNC_FILE
@@ -243,13 +239,13 @@ config ANDROID_DEFAULT_SETTING
 	select TASKSTATS
 	select TASK_XACCT
 	select TCP_CONG_ADVANCED
-	select TCP_CONG_BIC
 	select TIMERFD
 	select TTY
 	select TUN
 	select UHID
 	select UID_SYS_STATS
 	select UNIX
+	select UNICODE
 	select UNMAP_KERNEL_AT_EL0
 	select USB
 	select USB_CONFIGFS
@@ -277,8 +273,6 @@ config MTK_ANDROID_DEFAULT_SETTING
 	bool "Select MTK android common setting by default"
 	select HW_RANDOM
 	select HW_RANDOM_MT67XX
-	select MTK_AEE_AED
-	select MTK_AEE_IPANIC if MTK_RAM_CONSOLE
 	select MTK_MIX_DEVICES
 	select NETFILTER_XT_MATCH_ESP
 	select PGTABLE_MAPPING if ZSMALLOC && (ARM || ARM64)

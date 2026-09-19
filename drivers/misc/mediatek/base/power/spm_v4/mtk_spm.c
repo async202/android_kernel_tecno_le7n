@@ -541,10 +541,6 @@ static void __spm_check_dram_type(void)
 		__spmfw_idx = SPMFW_LP4X_2CH;
 	else if (ddr_type == TYPE_LPDDR4X && emi_ch_num == 1)
 		__spmfw_idx = SPMFW_LP4X_1CH;
-	else if (ddr_type == TYPE_LPDDR3 && emi_ch_num == 1)
-		__spmfw_idx = SPMFW_LP3_1CH;
-	printk_deferred("[name:spm&]#@# %s(%d) __spmfw_idx 0x%x\n",
-		__func__, __LINE__, __spmfw_idx);
 };
 #elif defined(CONFIG_MACH_MT6771)
 static void __spm_check_dram_type(void)
@@ -560,8 +556,6 @@ static void __spm_check_dram_type(void)
 		__spmfw_idx = SPMFW_LP4X_2CH_3733;
 	else if (ddr_type == TYPE_LPDDR4 && ddr_hz == 3200)
 		__spmfw_idx = SPMFW_LP4X_2CH_3200;
-	else if (ddr_type == TYPE_LPDDR3 && ddr_hz == 1866)
-		__spmfw_idx = SPMFW_LP3_1CH_1866;
 	else if (ddr_type == TYPE_LPDDR4 && ddr_hz == 2400)
 		__spmfw_idx = SPMFW_LP4_2CH_2400;
 	printk_deferred("[name:spm&]#@# %s(%d) __spmfw_idx 0x%x (type:%d freq:%d)\n",
@@ -1069,10 +1063,6 @@ int spm_golden_setting_cmp(bool en)
 		ddrphy_setting = ddrphy_setting_lp4_1ch;
 		ddrphy_num = ARRAY_SIZE(ddrphy_setting_lp4_1ch);
 		break;
-	case SPMFW_LP3_1CH:
-		ddrphy_setting = ddrphy_setting_lp3_1ch;
-		ddrphy_num = ARRAY_SIZE(ddrphy_setting_lp3_1ch);
-		break;
 	default:
 		return r;
 	}
@@ -1087,10 +1077,6 @@ int spm_golden_setting_cmp(bool en)
 	case SPMFW_LP4X_2CH_3200:
 		ddrphy_setting = ddrphy_setting_lp4_2ch;
 		ddrphy_num = ARRAY_SIZE(ddrphy_setting_lp4_2ch);
-		break;
-	case SPMFW_LP3_1CH_1866:
-		ddrphy_setting = ddrphy_setting_lp3_1ch;
-		ddrphy_num = ARRAY_SIZE(ddrphy_setting_lp3_1ch);
 		break;
 	default:
 		return r;
@@ -1450,7 +1436,7 @@ void sspm_ipi_lock_spm_scenario(int start,
 		atomic_dec(&ipi_lock_cnt);
 
 	/* FTRACE tag */
-	trace_sspm_ipi(start, id, opt);
+	//trace_sspm_ipi(start, id, opt);
 }
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 

@@ -959,7 +959,7 @@ bool vpu_is_idle(struct vpu_core *vpu_core);
 
 /* LOG & AEE */
 #define VPU_TAG "[vpu]"
-#define VPU_DEBUG
+#define VPU_DEBUG 0
 #ifdef VPU_DEBUG
 #define LOG_DBG(format, args...)    pr_debug(VPU_TAG " " format, ##args)
 #else

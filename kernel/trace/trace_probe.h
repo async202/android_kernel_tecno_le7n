@@ -253,6 +253,8 @@ struct symbol_cache;
 unsigned long update_symbol_cache(struct symbol_cache *sc);
 void free_symbol_cache(struct symbol_cache *sc);
 struct symbol_cache *alloc_symbol_cache(const char *sym, long offset);
+int trace_kprobe_ftrace(struct trace_event_call *call);
+int trace_kprobe_error_injectable(struct trace_event_call *call);
 #else
 /* uprobes do not support symbol fetch methods */
 #define fetch_symbol_u8			NULL
@@ -277,6 +279,16 @@ static inline struct symbol_cache * __used
 alloc_symbol_cache(const char *sym, long offset)
 {
 	return NULL;
+}
+
+static inline int trace_kprobe_ftrace(struct trace_event_call *call)
+{
+	return 0;
+}
+
+static inline int trace_kprobe_error_injectable(struct trace_event_call *call)
+{
+	return 0;
 }
 #endif /* CONFIG_KPROBE_EVENTS */
 
@@ -303,6 +315,29 @@ struct event_file_link {
 	struct trace_event_file		*file;
 	struct list_head		list;
 };
+
+static inline unsigned int trace_probe_load_flag(struct trace_probe *tp)
+{
+	return smp_load_acquire(&tp->flags);
+}
+
+static inline bool trace_probe_test_flag(struct trace_probe *tp,
+					 unsigned int flag)
+{
+	return !!(trace_probe_load_flag(tp) & flag);
+}
+
+static inline void trace_probe_set_flag(struct trace_probe *tp,
+					unsigned int flag)
+{
+	smp_store_release(&tp->flags, tp->flags | flag);
+}
+
+static inline void trace_probe_clear_flag(struct trace_probe *tp,
+					  unsigned int flag)
+{
+	tp->flags &= ~flag;
+}
 
 static inline bool trace_probe_is_enabled(struct trace_probe *tp)
 {
@@ -411,3 +446,14 @@ store_trace_args(int ent_size, struct trace_probe *tp, struct pt_regs *regs,
 }
 
 extern int set_print_fmt(struct trace_probe *tp, bool is_return);
+
+#ifdef CONFIG_PERF_EVENTS
+extern struct trace_event_call *
+create_local_trace_kprobe(char *func, void *addr, unsigned long offs,
+			  bool is_return);
+extern void destroy_local_trace_kprobe(struct trace_event_call *event_call);
+
+extern struct trace_event_call *
+create_local_trace_uprobe(char *name, unsigned long offs, bool is_return);
+extern void destroy_local_trace_uprobe(struct trace_event_call *event_call);
+#endif

@@ -21,7 +21,7 @@
 #include <accel.h>
 #include <hwmsensor.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #define SW_CALIBRATION
 #define ACCELHUB_AXIS_X 0
 #define ACCELHUB_AXIS_Y 1

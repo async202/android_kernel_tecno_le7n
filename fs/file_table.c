@@ -78,14 +78,14 @@ EXPORT_SYMBOL_GPL(get_max_files);
  */
 #if defined(CONFIG_SYSCTL) && defined(CONFIG_PROC_FS)
 int proc_nr_files(struct ctl_table *table, int write,
-                     void __user *buffer, size_t *lenp, loff_t *ppos)
+                     void *buffer, size_t *lenp, loff_t *ppos)
 {
 	files_stat.nr_files = get_nr_files();
 	return proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
 }
 #else
 int proc_nr_files(struct ctl_table *table, int write,
-                     void __user *buffer, size_t *lenp, loff_t *ppos)
+                     void *buffer, size_t *lenp, loff_t *ppos)
 {
 	return -ENOSYS;
 }
@@ -169,6 +169,7 @@ struct file *alloc_file(const struct path *path, fmode_t mode,
 	file->f_inode = path->dentry->d_inode;
 	file->f_mapping = path->dentry->d_inode->i_mapping;
 	file->f_wb_err = filemap_sample_wb_err(file->f_mapping);
+	file->f_sb_err = file_sample_sb_err(file);
 	if ((mode & FMODE_READ) &&
 	     likely(fop->read || fop->read_iter))
 		mode |= FMODE_CAN_READ;
@@ -261,9 +262,9 @@ void flush_delayed_fput(void)
 
 static DECLARE_DELAYED_WORK(delayed_fput_work, delayed_fput);
 
-void fput(struct file *file)
+void fput_many(struct file *file, unsigned int refs)
 {
-	if (atomic_long_dec_and_test(&file->f_count)) {
+	if (atomic_long_sub_and_test(refs, &file->f_count)) {
 		struct task_struct *task = current;
 
 		if (likely(!in_interrupt() && !(task->flags & PF_KTHREAD))) {
@@ -280,6 +281,11 @@ void fput(struct file *file)
 		if (llist_add(&file->f_u.fu_llist, &delayed_fput_list))
 			schedule_delayed_work(&delayed_fput_work, 1);
 	}
+}
+
+void fput(struct file *file)
+{
+	fput_many(file, 1);
 }
 
 /*
@@ -312,7 +318,7 @@ void put_filp(struct file *file)
 void __init files_init(void)
 {
 	filp_cachep = kmem_cache_create("filp", sizeof(struct file), 0,
-			SLAB_HWCACHE_ALIGN | SLAB_PANIC, NULL);
+			SLAB_HWCACHE_ALIGN | SLAB_PANIC | SLAB_ACCOUNT, NULL);
 	percpu_counter_init(&nr_files, 0, GFP_KERNEL);
 }
 

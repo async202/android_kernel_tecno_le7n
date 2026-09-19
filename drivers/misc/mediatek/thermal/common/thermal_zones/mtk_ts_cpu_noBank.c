@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG 1
+#define DEBUG 0
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -1138,7 +1138,7 @@ static ssize_t tscpu_write_sspm_thermal_throttle
 	int sspm_thermal_throttle_switch;
 	int len = 0;
 
-	tscpu_warn("%s\n", __func__);
+	tscpu_dprintk("%s\n", __func__);
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
@@ -1150,7 +1150,7 @@ static ssize_t tscpu_write_sspm_thermal_throttle
 		tscpu_sspm_thermal_throttle =
 			sspm_thermal_throttle_switch;
 
-		tscpu_warn("%s , %d\n", __func__,
+		tscpu_dprintk("%s , %d\n", __func__,
 			tscpu_sspm_thermal_throttle);
 
 		lvts_ipi_send_sspm_thermal_thtottle();
@@ -1927,7 +1927,7 @@ static int ktp_thread(void *arg)
 
 		max_temp = tscpu_max_temperature();
 
-		tscpu_warn("%s temp=%d\n", __func__, max_temp);
+		tscpu_dprintk("%s temp=%d\n", __func__, max_temp);
 
 		if ((temp_tc_mid_trip > -275000)
 			&& (max_temp >= (temp_tc_mid_trip - 5000))) {
@@ -2309,7 +2309,7 @@ int tscpu_is_temp_valid(void)
 	if (g_is_temp_valid == 0) {
 		check_all_temp_valid();
 		if (g_is_temp_valid == 1)
-			tscpu_warn(
+			tscpu_dprintk(
 				"Driver is ready to report valid temperatures\n");
 	}
 

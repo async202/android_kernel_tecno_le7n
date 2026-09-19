@@ -242,6 +242,8 @@ endif
 endif
 
 ifdef CONFIG_FTRACE_MCOUNT_RECORD
+ifndef CC_USING_RECORD_MCOUNT
+# compiler will not generate __mcount_loc use recordmcount or recordmcount.pl
 ifdef BUILD_C_RECORDMCOUNT
 ifeq ("$(origin RECORDMCOUNT_WARN)", "command line")
   RECORDMCOUNT_FLAGS = -w
@@ -282,6 +284,7 @@ cmd_record_mcount =						\
 		$(sub_cmd_record_mcount)			\
 	fi;
 endif
+endif # CC_USING_RECORD_MCOUNT
 endif # CONFIG_FTRACE_MCOUNT_RECORD
 
 ifdef CONFIG_STACK_VALIDATION
@@ -662,6 +665,17 @@ $(call multi_depend, $(multi-used-m), .o, -objs -y -m)
 
 targets += $(multi-used-y) $(multi-used-m)
 
+
+# Add intermediate targets:
+# When building objects with specific suffix patterns, add intermediate
+# targets that the final targets are derived from.
+intermediate_targets = $(foreach sfx, $(2), \
+				$(patsubst %$(strip $(1)),%$(sfx), \
+					$(filter %$(strip $(1)), $(targets))))
+# %.lex.o <- %.lex.c <- %.l
+# %.tab.o <- %.tab.[ch] <- %.y
+targets += $(call intermediate_targets, .lex.o, .lex.c) \
+	   $(call intermediate_targets, .tab.o, .tab.c .tab.h)
 
 # Descending
 # ---------------------------------------------------------------------------

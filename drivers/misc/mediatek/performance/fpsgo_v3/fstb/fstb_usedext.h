@@ -35,6 +35,7 @@
 #define MDLA_MAX_CAP 100
 #define RESET_TOLERENCE 3
 #define DEFAULT_JUMP_CHECK_NUM 21
+#define DEFAULT_JUMP_CHECK_Q_PCT 33
 #define JUMP_VOTE_MAX_I 60
 
 extern int (*fbt_notifier_cpu_frame_time_fps_stabilizer)(
@@ -55,9 +56,12 @@ struct FSTB_FRAME_INFO {
 	char proc_name[16];
 	int target_fps;
 	int target_fps_margin;
+	int target_fps_margin_gpu;
 	int target_fps_margin2;
 	int target_fps_margin_dbnc_a;
 	int target_fps_margin_dbnc_b;
+	int target_fps_margin_gpu_dbnc_a;
+	int target_fps_margin_gpu_dbnc_b;
 	int queue_fps;
 	unsigned long long bufid;
 	int in_list;

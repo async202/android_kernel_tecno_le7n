@@ -99,7 +99,7 @@ int port_dev_kernel_read(struct port_t *port, char *buf, int size)
 	md_state = ccci_fsm_get_md_state(port->md_id);
 	if (md_state != READY && port->tx_ch != CCCI_FS_TX &&
 		port->tx_ch != CCCI_RPC_TX) {
-		pr_info_ratelimited(
+		pr_err(
 			"port %s read data fail when md_state = %d\n",
 			port->name, md_state);
 		return -ENODEV;
@@ -807,8 +807,11 @@ static void port_dump_string(struct port_t *port, int dir,
 				"[%02X]", char_ptr[i]);
 			j += 4;
 		}
-		if (ret < 0 || ret >= DUMP_BUF_SIZE - j)
+		if (ret < 0 || ret >= DUMP_BUF_SIZE - j) {
+			/* CCCI_ERROR_LOG(port->md_id, TAG,
+				"%s-%d:snprintf fail,ret = %d\n", __func__, __LINE__, ret); */
 			break;
+		}
 	}
 	buf[j] = '\0';
 	ts_nsec = local_clock();
@@ -1244,7 +1247,8 @@ static inline void proxy_setup_channel_mapping(struct port_proxy *proxy_p)
 	for (i = 0; i < proxy_p->port_number; i++) {
 		port = proxy_p->ports + i;
 		/*setup RX_CH=>port list mapping*/
-		list_add_tail(&port->entry, &proxy_p->rx_ch_ports[port->rx_ch]);
+		if (port->rx_ch < CCCI_MAX_CH_NUM)
+			list_add_tail(&port->entry, &proxy_p->rx_ch_ports[port->rx_ch]);
 
 		/* skip no data transmission port,
 		 * such as CCCI_DUMMY_CH type port

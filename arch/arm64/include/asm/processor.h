@@ -24,6 +24,14 @@
 #define KERNEL_DS	UL(-1)
 #define USER_DS		(TASK_SIZE_64 - 1)
 
+/*
+ * On arm64 systems, unaligned accesses by the CPU are cheap, and so there is
+ * no point in shifting all network buffers by 2 bytes just to make some IP
+ * header fields appear aligned in memory, potentially sacrificing some DMA
+ * performance on some platforms.
+ */
+#define NET_IP_ALIGN	0
+
 #ifndef __ASSEMBLY__
 
 /*
@@ -71,9 +79,9 @@
 
 #define STACK_TOP_MAX		TASK_SIZE_64
 #ifdef CONFIG_COMPAT
-#define AARCH32_VECTORS_BASE	0xffff0000
+#define AARCH32_KUSER_HELPERS_BASE 0xffff0000
 #define STACK_TOP		(test_thread_flag(TIF_32BIT) ? \
-				AARCH32_VECTORS_BASE : STACK_TOP_MAX)
+				AARCH32_KUSER_HELPERS_BASE : STACK_TOP_MAX)
 #else
 #define STACK_TOP		STACK_TOP_MAX
 #endif /* CONFIG_COMPAT */
@@ -143,8 +151,9 @@ void tls_preserve_current_state(void);
 
 static inline void start_thread_common(struct pt_regs *regs, unsigned long pc)
 {
+	s32 previous_syscall = regs->syscallno;
 	memset(regs, 0, sizeof(*regs));
-	forget_syscall(regs);
+	regs->syscallno = previous_syscall;
 	regs->pc = pc;
 }
 
@@ -219,21 +228,21 @@ extern struct task_struct *cpu_switch_to(struct task_struct *prev,
 #define ARCH_HAS_PREFETCH
 static inline void prefetch(const void *ptr)
 {
-	asm volatile("prfm pldl1keep, %a0\n" : : "p" (ptr));
+	asm volatile("prfm pldl1keep, %0\n" : : "Q" (ptr));
 }
 
 #define ARCH_HAS_PREFETCHW
 static inline void prefetchw(const void *ptr)
 {
-	asm volatile("prfm pstl1keep, %a0\n" : : "p" (ptr));
+	asm volatile("prfm pstl1keep, %0\n" : : "Q" (ptr));
 }
 
 #define ARCH_HAS_SPINLOCK_PREFETCH
 static inline void spin_lock_prefetch(const void *ptr)
 {
 	asm volatile(ARM64_LSE_ATOMIC_INSN(
-		     "prfm pstl1strm, %a0",
-		     "nop") : : "p" (ptr));
+		     "prfm pstl1strm, %0",
+		     "nop") : : "Q" (ptr));
 }
 
 #define HAVE_ARCH_PICK_MMAP_LAYOUT

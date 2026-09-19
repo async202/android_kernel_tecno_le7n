@@ -48,7 +48,7 @@ static unsigned int cl_dev_sysrst_state;
 static struct thermal_zone_device *thz_dev;
 
 static struct thermal_cooling_device *cl_dev_sysrst;
-static int tsbuck_debug_log;
+static int tsbuck_debug_log = 0;
 static int kernelmode;
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

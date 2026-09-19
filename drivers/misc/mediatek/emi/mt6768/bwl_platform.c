@@ -35,12 +35,9 @@
 
 static unsigned int decs_status;
 
-unsigned int decode_bwl_env(
-	unsigned int dram_type, unsigned int ch_num, unsigned int rk_num)
+inline unsigned int decode_bwl_env(
+	unsigned int dram_type, unsigned int rk_num)
 {
-	if (ch_num == 1)
-		return BWL_ENV_LPDDR3_1CH;
-	else
 		return BWL_ENV_LPDDR4_2CH;
 }
 

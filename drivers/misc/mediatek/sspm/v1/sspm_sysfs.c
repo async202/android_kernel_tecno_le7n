@@ -24,7 +24,9 @@
 #include <mt-plat/sync_write.h>
 #include "sspm_define.h"
 #include "sspm_sysfs.h"
+#if SSPM_LOGGER_SUPPORT
 #include "sspm_logger.h"
+#endif
 
 static wait_queue_head_t logwait;
 

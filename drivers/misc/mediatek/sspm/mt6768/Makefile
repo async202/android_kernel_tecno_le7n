@@ -16,5 +16,8 @@ ccflags-$(CONFIG_MTK_ENG_BUILD) += -DDEBUG
 #SSPM_IPI_TEST=y
 obj-$(SSPM_IPI_TEST) += sspm_ipi_test.o
 
-sspm_platform-y += ../sspm_mbox.o ../sspm_ipi_mbox.o ../sspm_logger_impl.o ../sspm_timesync.o sspm_emi_mpu.o sspm_ipi_timeout_cb.o
+sspm_platform-y += ../sspm_mbox.o ../sspm_ipi_mbox.o ../sspm_timesync.o sspm_emi_mpu.o sspm_ipi_timeout_cb.o
 
+ifeq ($(SSPM_LOGGER_SUPPORT),1)
+sspm_platform-y += ../sspm_logger_impl.o
+endif

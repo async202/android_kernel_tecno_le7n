@@ -30,7 +30,7 @@
 #define MAX_BACKLIGHT_BRIGHTNESS 255
 
 #define mtk_cooler_backlight_dprintk(fmt, args...)	\
-	pr_notice("thermal/cooler/backlight " fmt, ##args)
+	pr_debug("thermal/cooler/backlight " fmt, ##args)
 
 
 static struct thermal_cooling_device
@@ -57,7 +57,7 @@ static int mtk_cl_backlight_set_cur_state
 {
 	int enable = (state == MAX_BACKLIGHT_BRIGHTNESS) ? 0 : 1;
 
-	printk("[%s]: --lyd_thmal, set max brightness = %d\n", __func__, state);
+	pr_debug("[%s]: --lyd_thmal, set max brightness = %d\n", __func__, state);
 	setMaxbrightness(state, enable);
 	g_backlight_level = state;
 	mtk_cooler_backlight_dprintk("%u\n", g_backlight_level);

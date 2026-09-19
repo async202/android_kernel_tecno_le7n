@@ -50,7 +50,7 @@
 #include "session.h"
 #include "string2.h"
 
-#include "sane_ctype.h"
+#include <linux/ctype.h>
 
 #define PERFPROBE_GROUP "probe"
 
@@ -197,8 +197,10 @@ struct map *get_target_map(const char *target, struct nsinfo *nsi, bool user)
 		struct map *map;
 
 		map = dso__new_map(target);
-		if (map && map->dso)
+		if (map && map->dso) {
+			nsinfo__put(map->dso->nsinfo);
 			map->dso->nsinfo = nsinfo__get(nsi);
+		}
 		return map;
 	} else {
 		return kernel_get_module_map(target);
