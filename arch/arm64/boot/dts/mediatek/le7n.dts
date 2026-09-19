@@ -2926,6 +2926,13 @@
 			status = "okay";
 		};
 
+		speaker_amp: speaker_amp@34 {
+			compatible = "mediatek,speaker_amp";
+			#sound-dai-cells = <0x00>;
+			reg = <0x34>;
+			status = "okay";
+		};
+
 		rt-swchg@53 {
 			compatible = "richtek,swchg";
 			reg = <0x53>;
@@ -3277,7 +3284,13 @@
 		compatible = "mediatek,mt6768-mt6358-sound";
 		mediatek,audio-codec = <0x53>;
 		mediatek,platform = <0x54>;
+		mtk_spk_i2s_out = <3>;
+		mtk_spk_i2s_in = <0>;
 		phandle = <0xc6>;
+
+		mediatek,speaker-codec {
+			sound-dai = <&speaker_amp>;
+		};
 	};
 
 	snd_scp_spk: snd_scp_spk {
@@ -4721,6 +4734,19 @@
 		pinctrl-2 = <&fingerprint_eint_pull_down>;
 		pinctrl-3 = <&fingerprint_rst_one>;
 		pinctrl-4 = <&fingerprint_rst_zero>;
+		status = "okay";
+	};
+
+	tran_audio: tran_audio {
+		compatible = "tran_audio,audio";
+		extamp_gpio = <&pio 166 0>;
+		extamp_mode = <2>;
+		extamp_speech_mode = <2>;
+		receiver_mode = <6>;
+		amp_type_gpio = <&pio 80 0>;
+		fs_extamp_mode = <6>;
+		fs_extamp_speech_mode = <6>;
+		fs_receiver_mode = <3>;
 		status = "okay";
 	};
 };

@@ -16,9 +16,11 @@
 #include "mt6768-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 #include "../common/mtk-sp-spk-amp.h"
+#include "../common/mtk-sp-common.h"
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/irqflags.h>
 
 /*
@@ -81,49 +83,151 @@ extern unsigned char aw87519_audio_hvload(void);
 extern unsigned char aw87519_audio_off(void);
 #endif
 
-// Transsion "Dual speaker driven by Headphone path" settings
-#define SPK_GPIO_PIN      491
-#define SPK_PA_TYPE_GPIO  405
+struct tran_extamp_data {
+	int extamp_gpio;
+	int dual_speaker_gpio;
+	int normal_mode;
+	int speech_mode;
+	int receiver_mode;
+	int amp_type_gpio;
+	int pa_type;
+};
 
-static int current_amp_mode = -1;
+static struct tran_extamp_data tran_amp_data = {
+	.extamp_gpio = 491,
+	.dual_speaker_gpio = -1,
+	.normal_mode = 6,
+	.speech_mode = 6,
+	.receiver_mode = 3,
+	.amp_type_gpio = 405,
+	.pa_type = 1, /* 1: FourSemi, 0: Awinic */
+};
+
 static bool ext_amp_gpio_requested = false;
+static bool tran_is_midtest = false;
 
-static void tran_ext_amp_sel(int mode)
+static void tran_parse_dts_node(void)
 {
-	if (current_amp_mode == mode) return;
-	current_amp_mode = mode;
+	struct device_node *tran_node = of_find_compatible_node(NULL, NULL, "tran_audio,audio");
+	int pa_gpio_val = 0;
+
+	if (!tran_node) {
+		pr_warn("tran_parse_dts_node: 'tran_audio,audio' node not found, using defaults\n");
+		return;
+	}
+
+	tran_amp_data.extamp_gpio = of_get_named_gpio_flags(tran_node, "extamp_gpio", 0, NULL);
+	tran_amp_data.dual_speaker_gpio = of_get_named_gpio_flags(tran_node, "dual_speaker_gpio", 0, NULL);
+	tran_amp_data.amp_type_gpio = of_get_named_gpio_flags(tran_node, "amp_type_gpio", 0, NULL);
+
+	if (gpio_is_valid(tran_amp_data.amp_type_gpio)) {
+		if (gpio_request(tran_amp_data.amp_type_gpio, "tran_pa_type") == 0) {
+			gpio_direction_input(tran_amp_data.amp_type_gpio);
+		}
+		pa_gpio_val = gpio_get_value(tran_amp_data.amp_type_gpio);
+	}
+
+	pr_info("tran_parse_dts_node() pa_type_gpio = %d, value = %d\n",
+		tran_amp_data.amp_type_gpio, pa_gpio_val);
+
+	if (pa_gpio_val == 0) {
+		pr_info("tran_parse_dts_node() use fs pa\n");
+		tran_amp_data.pa_type = 1;
+		of_property_read_u32(tran_node, "fs_extamp_mode", &tran_amp_data.normal_mode);
+		of_property_read_u32(tran_node, "fs_extamp_speech_mode", &tran_amp_data.speech_mode);
+		of_property_read_u32(tran_node, "fs_receiver_mode", &tran_amp_data.receiver_mode);
+	} else {
+		pr_info("tran_parse_dts_node() use aw pa\n");
+		tran_amp_data.pa_type = 0;
+		of_property_read_u32(tran_node, "extamp_mode", &tran_amp_data.normal_mode);
+		of_property_read_u32(tran_node, "extamp_speech_mode", &tran_amp_data.speech_mode);
+		of_property_read_u32(tran_node, "receiver_mode", &tran_amp_data.receiver_mode);
+	}
+
+	if (gpio_is_valid(tran_amp_data.extamp_gpio)) {
+		if (!ext_amp_gpio_requested) {
+			if (gpio_request(tran_amp_data.extamp_gpio, "tran_spk_amp") == 0) {
+				gpio_direction_output(tran_amp_data.extamp_gpio, 0);
+			}
+			ext_amp_gpio_requested = true;
+		}
+	}
+
+	pr_info("tran_parse_dts_node gpio = %d dualspeaker_gpio %d speech_mode = %d, normal_mode = %d\n",
+		tran_amp_data.extamp_gpio, tran_amp_data.dual_speaker_gpio,
+		tran_amp_data.speech_mode, tran_amp_data.normal_mode);
+}
+
+static void Tran_AudDrv_GPIO_Single_Speaker_Sel(int on, int mode)
+{
+	int count = 0;
+	int dly = (tran_amp_data.pa_type == 1) ? 10 : 2; /* FS PA = 10us, AW PA = 2us */
+	unsigned long flags;
+
+	if (mode == 2)
+		count = tran_amp_data.receiver_mode;
+	else if (mode == 1)
+		count = tran_amp_data.speech_mode;
+	else if (mode == 0)
+		count = tran_amp_data.normal_mode;
+
+	if (!gpio_is_valid(tran_amp_data.extamp_gpio))
+		return;
 
 	if (!ext_amp_gpio_requested) {
-		/* Request main speaker amp switch GPIO */
-		if (gpio_request(SPK_GPIO_PIN, "tran_spk_amp") == 0)
-			gpio_direction_output(SPK_GPIO_PIN, 0);
-		
-		/* Request auxiliary PA type GPIO */
-		if (gpio_request(SPK_PA_TYPE_GPIO, "tran_pa_type") == 0)
-			gpio_direction_output(SPK_PA_TYPE_GPIO, 0);
-			
+		if (gpio_request(tran_amp_data.extamp_gpio, "tran_spk_amp") == 0) {
+			gpio_direction_output(tran_amp_data.extamp_gpio, 0);
+		}
 		ext_amp_gpio_requested = true;
 	}
 
-	if (mode == 1) {
-		/* Route output to speaker */
-		gpio_set_value(SPK_GPIO_PIN, 1);
-		pr_err("SPK_AMP_SWITCH: Amp ON (gpio=%d set to 1)\n", SPK_GPIO_PIN);
-	} else {
-		/* Route output to headphones */
-		gpio_set_value(SPK_GPIO_PIN, 0);
-		pr_err("SPK_AMP_SWITCH: Amp OFF (gpio=%d set to 0)\n", SPK_GPIO_PIN);
+	if (on == 0) {
+		gpio_set_value(tran_amp_data.extamp_gpio, 0);
+		pr_info("Tran_AudDrv_GPIO_Single_Speaker_Sel: Amp OFF (gpio=%d set to 0)\n",
+			tran_amp_data.extamp_gpio);
+		return;
 	}
+
+	/* on == 1 */
+	pr_info("Tran_AudDrv_GPIO_Single_Speaker_Sel: Amp ON (gpio=%d, mode=%d, pulses=%d, pa_type=%d, dly=%dus)\n",
+		tran_amp_data.extamp_gpio, mode, count, tran_amp_data.pa_type, dly);
+
+	if (tran_amp_data.pa_type == 1) {
+		/* FourSemi: initial enable high pulse */
+		gpio_set_value(tran_amp_data.extamp_gpio, 1);
+		udelay(300);
+	}
+
+	local_irq_save(flags);
+	while (count > 0) {
+		gpio_set_value(tran_amp_data.extamp_gpio, 0);
+		udelay(dly);
+		gpio_set_value(tran_amp_data.extamp_gpio, 1);
+		udelay(dly);
+		count--;
+	}
+	local_irq_restore(flags);
+	/* Leave pin HIGH for amplifier operation */
+}
+
+static void tran_ext_amp_sel(int on, int mode)
+{
+	Tran_AudDrv_GPIO_Single_Speaker_Sel(on, mode);
 }
 
 static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
-                                       struct snd_kcontrol *kcontrol,
-                                       int event)
+				       struct snd_kcontrol *kcontrol,
+				       int event)
 {
+	dev_info(w->dapm->dev, "%s(), event %d\n", __func__, event);
 	if (event == SND_SOC_DAPM_POST_PMU) {
-		tran_ext_amp_sel(1);
+		pr_info("%s(), spk_amp on\n", __func__);
+		tran_ext_amp_sel(1, mtk_get_speech_status() ? 1 : 0);
+		msleep(40);
 	} else if (event == SND_SOC_DAPM_PRE_PMD) {
-		tran_ext_amp_sel(0);
+		pr_info("%s(), spk_amp off\n", __func__);
+		tran_ext_amp_sel(0, 0);
+		udelay(50);
 	}
 	return 0;
 }
@@ -140,29 +244,101 @@ static const struct snd_soc_dapm_route mt6768_mt6358_routes[] = {
 };
 
 /* ALSA control for Transsion Audio HAL */
+static const char * const tran_switch_str[] = {"Off", "On"};
+static const struct soc_enum tran_2n1_spk_enum = SOC_ENUM_SINGLE_EXT(2, tran_switch_str);
+static const struct soc_enum tran_loopback_enum = SOC_ENUM_SINGLE_EXT(2, tran_switch_str);
+static const struct soc_enum tran_midtest_spk_enum = SOC_ENUM_SINGLE_EXT(2, tran_switch_str);
+
 static const char * const tran_amp_pa_str[] = {"0", "1", "2"};
 static const struct soc_enum tran_amp_pa_enum = SOC_ENUM_SINGLE_EXT(3, tran_amp_pa_str);
 
-static int tran_amp_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) {
-    ucontrol->value.integer.value[0] = 0; /* Default PA type expected by HAL */
-    return 0;
+static int tran_2n1_speaker_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s()\n", __func__);
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
 }
 
-static int tran_amp_pa_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol) {
-    return 0;
+static int tran_2n1_speaker_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	long val = ucontrol->value.integer.value[0];
+	pr_info("%s() val=%ld\n", __func__, val);
+	if (val) {
+		Tran_AudDrv_GPIO_Single_Speaker_Sel(1, tran_is_midtest ? 0 : 2);
+		msleep(40);
+	} else {
+		if (gpio_is_valid(tran_amp_data.extamp_gpio))
+			gpio_set_value(tran_amp_data.extamp_gpio, 0);
+		udelay(50);
+	}
+	return 0;
+}
+
+static int tran_loopback_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s()\n", __func__);
+	ucontrol->value.integer.value[0] = tran_is_midtest ? 1 : 0;
+	return 0;
+}
+
+static int tran_loopback_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	long val = ucontrol->value.integer.value[0];
+	tran_is_midtest = (val != 0);
+	pr_info("%s() midtest=%d\n", __func__, tran_is_midtest);
+	return 0;
+}
+
+static int tran_midtest_speaker_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s()\n", __func__);
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int tran_midtest_speaker_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	long val = ucontrol->value.integer.value[0];
+	pr_info("%s() val=%ld\n", __func__, val);
+	if (val) {
+		if (gpio_is_valid(tran_amp_data.extamp_gpio))
+			gpio_set_value(tran_amp_data.extamp_gpio, 1);
+	} else {
+		if (gpio_is_valid(tran_amp_data.extamp_gpio))
+			gpio_set_value(tran_amp_data.extamp_gpio, 0);
+	}
+	return 0;
+}
+
+static int tran_amp_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = tran_amp_data.pa_type;
+	pr_info("%s() amp pa type = %d\n", __func__, tran_amp_data.pa_type);
+	return 0;
+}
+
+static int tran_amp_pa_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s()\n", __func__);
+	return 0;
 }
 
 static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
-        SOC_ENUM_EXT("Tran_Amp_PA_Type", tran_amp_pa_enum, tran_amp_pa_get, tran_amp_pa_set),
-	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
-		     mt6768_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
 		     mt6768_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_OUT_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_in_type_get, NULL),
+	SOC_ENUM_EXT("Tran_2N1_Speaker_Switch", tran_2n1_spk_enum,
+		     tran_2n1_speaker_get, tran_2n1_speaker_set),
+	SOC_ENUM_EXT("Tran_LoopBack_Switch", tran_loopback_enum,
+		     tran_loopback_get, tran_loopback_set),
+	SOC_ENUM_EXT("Tran_MidTest_LoopBack_Switch", tran_midtest_spk_enum,
+		     tran_midtest_speaker_get, tran_midtest_speaker_set),
+	SOC_ENUM_EXT("Tran_Amp_PA_Type", tran_amp_pa_enum,
+		     tran_amp_pa_get, tran_amp_pa_set),
 };
 
 
@@ -878,6 +1054,8 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 	struct device_node *platform_node, *codec_node;
 	int ret;
 	int i;
+
+	tran_parse_dts_node();
 
 	ret = mtk_spk_update_dai_link(card, pdev, &mt6768_mt6358_i2s_ops);
 	if (ret) {
