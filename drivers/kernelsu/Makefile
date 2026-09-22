@@ -12,8 +12,8 @@ $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
 # KSU VERSION
-KSU_VERSION := 33276
-KSU_VERSION_TAG := v3.3.0
+KSU_VERSION := 33301
+KSU_VERSION_TAG := v3.4.0
 
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG)\"
@@ -70,8 +70,15 @@ $(info -- KernelSU/compat: exported policy_rwlock found!)
 CFLAGS_ksu.o += -DKSU_COMPAT_HAS_EXPORTED_POLICY_RWLOCK
 endif
 
+# branch link hook vfs_statx, this newer version uses struct filename
+ifeq ($(shell grep "int vfs_statx" $(srctree)/fs/stat.c 2>/dev/null | grep -q "struct filename" 2>/dev/null; echo $$?),0)
+# $(info -- KernelSU/compat: vfs_statx has struct filename argument!)
+CFLAGS_ksu.o += -DKSU_HAS_VFS_STATX2
+endif
+
 # branch link hook, do_faccessat
 ifeq ($(shell grep "long do_faccessat" $(srctree)/fs/open.c 2>/dev/null | grep -q "flags" 2>/dev/null; echo $$?),0)
+# $(info -- KernelSU/compat: do_faccessat has flags argument!)
 CFLAGS_ksu.o += -DKSU_HAS_FACCESSAT2
 endif
 
@@ -164,15 +171,5 @@ all:
 	$(MAKE) -C $(KDIR) M=$(MDIR) modules
 clean:
 	$(MAKE) -C $(KDIR) M=$(MDIR) clean
-
-## For susfs stuff ##
-ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
-$(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
-$(info )
-$(info -- SUSFS_VERSION: $(SUSFS_VERSION))
-else
-$(info -- You have not integrated susfs in your kernel yet.)
-$(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)
-endif
 
 # Keep a new line here!! Because someone may append config

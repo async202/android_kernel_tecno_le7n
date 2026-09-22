@@ -77,9 +77,11 @@ __weak long copy_from_user_nofault(void *dst, const void __user *src, size_t siz
 
 	set_fs(USER_DS);
 
-	// normally theres an access_ok check here
-	// but for what we use it, it will always be true.
-	// so we skip it
+	/**
+	 * normally theres an access_ok check here
+	 * but for what we use it, it will always be true. 
+	 * we skip it.
+	 */
 	pagefault_disable();
 	ret = __copy_from_user_inatomic(dst, src, size);
 	pagefault_enable();
@@ -169,9 +171,25 @@ static ssize_t ksu_kernel_write_compat(struct file *p, const void *buf, size_t c
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
-static inline struct file *ksu_dentry_open(const struct path *path, int flags, const struct cred *cred)
+static __nocfi struct file *ksu_dentry_open(const struct path *path, int flags, const struct cred *cred)
 {
-	return dentry_open((*path).dentry, (*path).mnt, flags, cred);
+	// new type: struct file * dentry_open(const struct path *, int, const struct cred *);
+	extern typeof(dentry_open) dentry_open;
+	static_assert(!!&dentry_open);
+
+	if (!__builtin_types_compatible_p(typeof(dentry_open), typeof(ksu_dentry_open)))
+		goto old_fn;
+
+	return ((typeof(ksu_dentry_open) *)&dentry_open)(path, flags, cred);
+
+old_fn:; // old type: struct file * dentry_open(struct dentry *, struct vfsmount *, int, const struct cred *);
+	struct file *(*fn_old)(struct dentry *, struct vfsmount *, int, const struct cred *) = (void *)&dentry_open;
+	/**
+	 * old dentry_open consumes a reference regardless of failure or success (dput/mntput)
+	 * we have take one before calling it, else it releases caller's reference. see nameidata_to_filp
+	 */
+	path_get(path); 
+	return fn_old((*path).dentry, (*path).mnt, flags, cred);
 }
 #define dentry_open ksu_dentry_open
 #endif
@@ -179,11 +197,11 @@ static inline struct file *ksu_dentry_open(const struct path *path, int flags, c
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)
 __weak int path_mount(const char *dev_name, struct path *path, const char *type_page, unsigned long flags, void *data_page)
 {
-	char *buf __offstack_flags(PATH_MAX, GFP_KERNEL | __GFP_ZERO);
+	char *buf __offstack_flags(PATH_MAX, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
-	char *realpath = d_path(path, buf, PATH_MAX - 1);
+	char *realpath = d_path(path, buf, PATH_MAX);
 	if (IS_ERR(realpath) || realpath == buf)
 		return -ENOENT;
 
@@ -196,27 +214,7 @@ __weak int path_mount(const char *dev_name, struct path *path, const char *type_
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-#ifdef MODULE // bring an inline one for LKM
-extern long __arm64_sys_umount(struct pt_regs *);
-#define ksys_umount(name, flags) ({	\
-	struct pt_regs regs;		\
-	PT_REGS_PARM1(&regs) = name;	\
-	PT_REGS_PARM2(&regs) = flags;	\
-	(int)__arm64_sys_umount(&regs);	\
-})
-#else	/* ! MODULE */
-/**
- * if ksys_umount does NOT exist, it should have path_umount!
- * unreachable! polyfill is here so it compiles if thats the case.
- */
-__weak int ksys_umount(char __user *name, int flags) { return -ENOSYS; }
-#endif	/* ! MODULE */
-#else	// < 4.17
-#define ksys_umount(name, flags) ({ (int)sys_umount(name, flags); })
-#endif	// < 4.17
-
+static __always_inline int ksu_sys_umount(char __user *name, int flags);
 __weak int path_umount(struct path *path, int flags)
 {
 	char buf[256];
@@ -228,7 +226,7 @@ __weak int path_umount(struct path *path, int flags)
 
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
-	ret = ksys_umount((char __user *)usermnt, flags);
+	ret = ksu_sys_umount((char __user *)usermnt, flags);
 	set_fs(old_fs);
 
 	// release ref here! user_path_at increases it
@@ -239,15 +237,12 @@ out:
 }
 #endif // < 5.9
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
-#ifndef replace_fops
-#define replace_fops(f, fops) \
-	do {	\
-		struct file *__file = (f); \
-		fops_put(__file->f_op); \
-		BUG_ON(!(__file->f_op = (fops))); \
-	} while(0)
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0) && !defined(replace_fops)
+#define replace_fops(f, fops) do {		\
+	struct file *__file = (f);		\
+	fops_put(__file->f_op);			\
+	BUG_ON(!(__file->f_op = (fops))); 	\
+} while(0)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0) && defined(CONFIG_JUMP_LABEL)
@@ -383,7 +378,7 @@ __weak char *bin2hex(char *dst, const void *src, size_t count)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
-#define file_inode(f) ((f)->f_path.dentry->d_inode)
+#define file_inode(file) ((file)->f_path.dentry->d_inode)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) && !defined(CONFIG_LSM)
@@ -414,7 +409,7 @@ __weak void groups_sort(struct group_info *group_info) { } // no-op
 #endif // < 4.12 && !EPOLLIN
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION (3, 15, 0)
-#define task_ppid_nr(a) ({ (pid_t)sys_getppid(); })
+#define task_ppid_nr(__unused) ({ (pid_t)sys_getppid(); })
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION (3, 17, 0)
@@ -436,10 +431,8 @@ __weak unsigned long vm_mmap(struct file *file, unsigned long addr, unsigned lon
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION (4, 12, 0)
-#ifndef ALIGN_DOWN
+#if LINUX_VERSION_CODE < KERNEL_VERSION (4, 12, 0) && !defined(ALIGN_DOWN)
 #define ALIGN_DOWN(x, a) __ALIGN_KERNEL((x) - ((a) - 1), (a))
-#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION (3, 9, 0)
@@ -471,8 +464,30 @@ static inline ksu_kuid_t current_euid() { return *(ksu_kuid_t *)(&current_cred()
 #endif // < 3.14
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-static inline struct user_struct *ksu_alloc_uid(uid_t uid) { return alloc_uid(current_user_ns(), uid); }
-#define alloc_uid(uid) ksu_alloc_uid(ksu_get_uid_t(uid))
+static __nocfi struct user_struct *ksu_alloc_uid(uid_t uid)
+{
+	// old: struct user_struct *alloc_uid(struct user_namespace *ns, uid_t uid)
+	// new: struct user_struct *alloc_uid(kuid_t uid)
+	extern typeof(alloc_uid) alloc_uid;
+	static_assert(!!&alloc_uid);
+
+	if (!__builtin_types_compatible_p(typeof(alloc_uid), struct user_struct *(struct user_namespace *, uid_t)))
+		goto new_fn;
+	
+	struct user_struct *(*fn_old)(struct user_namespace *, uid_t) = (void *)&alloc_uid;
+	return fn_old(current_user_ns(), uid);
+
+new_fn:;
+	/**
+	 * HACK: some kernels does NOT have kuid_t typedef, it wont compile.
+	 * either way uid_t == kuid_t == ksu_kuid_t, so use a dummy struct
+	 * doesn't rly matter, just explicitness, an excuse to use ksu_kuid_t
+	 */
+	struct user_struct *(*fn_new)(ksu_kuid_t uid) = (void *)&alloc_uid;
+	ksu_kuid_t kuid = { .val = uid };
+	return fn_new(kuid);
+}
+#define alloc_uid(kuid) ksu_alloc_uid(ksu_get_uid_t(kuid))
 #endif
 
 #if defined(CONFIG_KEYS) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
@@ -487,6 +502,7 @@ static inline struct key *ksu_get_current_session_keyring() { return rcu_derefer
 
 static void ksu_grab_init_session_keyring()
 {
+	extern struct cred* ksu_cred;
 	extern bool is_init(const struct cred* cred);
 	extern int install_session_keyring_to_cred(struct cred *, struct key *);
 	static struct key *init_session_keyring = nullptr;
