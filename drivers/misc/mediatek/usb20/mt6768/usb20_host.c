@@ -85,6 +85,10 @@ struct switch_dev otg_state_dev = {
 EXPORT_SYMBOL_GPL(otg_state_dev);
 #endif
 
+#ifdef CONFIG_TRAN_CHARGER_FUNCS_ADD
+extern int tran_otg_ctl_val;
+#endif
+
 #ifdef CONFIG_MTK_CHARGER
 #if CONFIG_MTK_GAUGE_VERSION == 30
 #include <mt-plat/charger_class.h>
@@ -382,6 +386,13 @@ void mt_usb_host_connect(int delay)
 }
 void mt_usb_host_disconnect(int delay)
 {
+#ifdef CONFIG_TRAN_CHARGER_FUNCS_ADD
+	if (tran_otg_ctl_val) {
+		DBG(0, "OTG_CTL is active (%d), ignoring disconnect\n",
+			tran_otg_ctl_val);
+		return;
+	}
+#endif
 	typec_req_host = false;
 #ifdef CONFIG_MTK_REVERSE_CHG_ENABLE
 	is_otg = 0;
@@ -687,7 +698,11 @@ static void do_host_work(struct work_struct *data)
 		#endif
 
 		musb_start(mtk_musb);
+#ifdef CONFIG_TRAN_CHARGER_FUNCS_ADD
+		if (!typec_control && !host_plug_test_triggered && !tran_otg_ctl_val)
+#else
 		if (!typec_control && !host_plug_test_triggered)
+#endif
 			switch_int_to_device(mtk_musb);
 
 #ifdef CONFIG_SWITCH
@@ -738,6 +753,7 @@ static void do_host_work(struct work_struct *data)
 		mtk_musb->xceiv->otg->state = OTG_STATE_B_IDLE;
 		/* switch to DEV state after turn off VBUS */
 		MUSB_DEV_MODE(mtk_musb);
+		iddig_req_host = false;
 
 		usb_clk_state = ON_TO_OFF;
 #ifdef CONFIG_SWITCH
@@ -767,10 +783,20 @@ static irqreturn_t mt_usb_ext_iddig_int(int irq, void *dev_id)
 	DBG(0, "id pin assert, %s\n", iddig_req_host ?
 			"connect" : "disconnect");
 
+#ifdef CONFIG_TRAN_CHARGER_FUNCS_ADD
+	if (!iddig_req_host && tran_otg_ctl_val) {
+		DBG(0, "OTG_CTL is active (%d), ignoring iddig disconnect\n",
+			tran_otg_ctl_val);
+		iddig_req_host = true;
+		disable_irq_nosync(iddig_eint_num);
+		return IRQ_HANDLED;
+	}
+#endif
+
 	if (iddig_req_host)
-		mt_usb_host_connect(0);
+		mt_usb_host_connect(250);
 	else
-		mt_usb_host_disconnect(0);
+		mt_usb_host_disconnect(100);
 	disable_irq_nosync(iddig_eint_num);
 	return IRQ_HANDLED;
 }
