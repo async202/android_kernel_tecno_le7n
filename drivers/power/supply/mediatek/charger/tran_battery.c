@@ -22,7 +22,8 @@ extern struct switch_dev otg_state_dev;
 extern void mt_usb_host_connect(int delay);
 extern void mt_usb_host_disconnect(int delay);
 
-static int tran_otg_ctl_val;
+int tran_otg_ctl_val;
+EXPORT_SYMBOL_GPL(tran_otg_ctl_val);
 
 static ssize_t OTG_CTL_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
