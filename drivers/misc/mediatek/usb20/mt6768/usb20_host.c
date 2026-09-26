@@ -74,8 +74,16 @@ static void do_register_otg_work(struct work_struct *data)
 #endif
 #endif
 
-static void mt_usb_host_connect(int delay);
-static void mt_usb_host_disconnect(int delay);
+void mt_usb_host_connect(int delay);
+void mt_usb_host_disconnect(int delay);
+
+#ifdef CONFIG_SWITCH
+#include <linux/switch.h>
+struct switch_dev otg_state_dev = {
+	.name = "otg_state",
+};
+EXPORT_SYMBOL_GPL(otg_state_dev);
+#endif
 
 #ifdef CONFIG_MTK_CHARGER
 #if CONFIG_MTK_GAUGE_VERSION == 30
@@ -383,6 +391,8 @@ void mt_usb_host_disconnect(int delay)
 	DBG(0, "%s\n", typec_req_host ? "connect" : "disconnect");
 	issue_host_work(CONNECTION_OPS_DISC, delay, true);
 }
+EXPORT_SYMBOL_GPL(mt_usb_host_connect);
+EXPORT_SYMBOL_GPL(mt_usb_host_disconnect);
 #ifdef CONFIG_MTK_USB_TYPEC
 #ifdef CONFIG_TCPC_CLASS
 
@@ -680,6 +690,10 @@ static void do_host_work(struct work_struct *data)
 		if (!typec_control && !host_plug_test_triggered)
 			switch_int_to_device(mtk_musb);
 
+#ifdef CONFIG_SWITCH
+		switch_set_state(&otg_state_dev, 1);
+#endif
+
 		if (host_plug_test_enable && !host_plug_test_triggered)
 			queue_delayed_work(mtk_musb->st_wq,
 						&host_plug_test_work, 0);
@@ -726,6 +740,9 @@ static void do_host_work(struct work_struct *data)
 		MUSB_DEV_MODE(mtk_musb);
 
 		usb_clk_state = ON_TO_OFF;
+#ifdef CONFIG_SWITCH
+		switch_set_state(&otg_state_dev, 0);
+#endif
 	}
 	DBG(0, "work end, is_host=%d\n", mtk_musb->is_host);
 	up(&mtk_musb->musb_lock);
@@ -851,11 +868,18 @@ void mt_usb_otg_init(struct musb *musb)
 	musb->fifo_cfg_host = fifo_cfg_host;
 	musb->fifo_cfg_host_size = ARRAY_SIZE(fifo_cfg_host);
 
+#ifdef CONFIG_SWITCH
+	if (switch_dev_register(&otg_state_dev))
+		pr_err("[MUSB] switch_dev_register for otg_state failed\n");
+#endif
 }
 void mt_usb_otg_exit(struct musb *musb)
 {
 	DBG(0, "OTG disable vbus\n");
 	mt_usb_set_vbus(mtk_musb, 0);
+#ifdef CONFIG_SWITCH
+	switch_dev_unregister(&otg_state_dev);
+#endif
 }
 
 enum {
