@@ -4050,18 +4050,34 @@
 
 		/* Camera power supplies requested by DTBO */
 		cam0_vcama-supply = <&mt_pmic_vcama2_ldo_reg>;
-		cam0_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
 		cam1_vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
-
 		cam2_vcama-supply = <&mt_pmic_vcama2_ldo_reg>;
 		cam3_vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
 		cam4_vcama-supply = <&mt_pmic_vcama2_ldo_reg>;
+
+		cam0_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
 		cam1_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+		cam2_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
 		cam3_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+		cam4_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+
 		cam0_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
 		cam1_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
 		cam2_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
 		cam3_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+		cam4_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+
+		/* Legacy aliases used by some camera drivers */
+		vcama_sub2-supply = <&mt_pmic_vcama1_ldo_reg>;
+		vcama_main2-supply = <&mt_pmic_vcama2_ldo_reg>;
+		vcama_main3-supply = <&mt_pmic_vcama2_ldo_reg>;
+		vcamaf-supply = <&mt_pmic_vldo28_ldo_reg>;
+		vcamd_sub-supply = <&mt_pmic_vcamd_ldo_reg>;
+		vcamd_sub2-supply = <&mt_pmic_vcamd_ldo_reg>;
+		vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+		vcamio_sub-supply = <&mt_pmic_vcamio_ldo_reg>;
+		vcamio_main2-supply = <&mt_pmic_vcamio_ldo_reg>;
+		vcamio_sub2-supply = <&mt_pmic_vcamio_ldo_reg>;
 
 		camera0 {
 			compatible = "mediatek,camera0";

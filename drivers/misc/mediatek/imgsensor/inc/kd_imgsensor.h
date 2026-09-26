@@ -666,8 +666,6 @@ void KD_IMGSENSOR_PROFILE_I2C(char *tag, int trans_num);
 
 #define mDELAY(ms)     mdelay(ms)
 #define uDELAY(us)       udelay(us)
-#endif              /* _KD_IMGSENSOR_H */
-
 #define S5KGM1ST_SENSOR_ID 0xf8d1
 #define SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW "s5kgm1st_mipi_raw"
 #define GC8034_SENSOR_ID 0x8044
@@ -681,3 +679,7 @@ void KD_IMGSENSOR_PROFILE_I2C(char *tag, int trans_num);
 #define SENSOR_DRVNAME_GC02M1B_MIPI_RAW "gc02m1b_mipi_raw"
 #define GC6153_SENSOR_ID 0x6153
 #define SENSOR_DRVNAME_GC6153_SERIAL_YUV "gc6153_serial_yuv"
+#define GC08A3_SENSOR_ID 0x08a3
+#define SENSOR_DRVNAME_GC08A3_MIPI_RAW "gc08a3_mipi_raw"
+
+#endif              /* _KD_IMGSENSOR_H */
