@@ -181,3 +181,10 @@ config CHARGER_BQ25601
 	  It depends on config MTK_SMART_BATTERY
 	  and config MTK_SWCHR_SUPPORT
 	  Set to Yes if BQ25601 is used.
+
+config TRAN_CHARGER_FUNCS_ADD
+	bool "Transsion Charger and Battery Functions"
+	depends on MTK_CHARGER
+	default y
+	help
+	  Transsion charging, battery sysfs interfaces, and OTG control.

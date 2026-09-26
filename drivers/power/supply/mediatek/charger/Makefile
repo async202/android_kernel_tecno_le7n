@@ -43,3 +43,4 @@ obj-y += smb1351-charger.o
 
 obj-$(CONFIG_LOAD_SWITCH_RT9750) += rt9750.o
 obj-$(CONFIG_CHARGER_MT6362) += mt6362-chg.o
+obj-$(CONFIG_TRAN_CHARGER_FUNCS_ADD) += tran_battery.o
